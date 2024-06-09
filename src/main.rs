@@ -5,9 +5,12 @@ use std::time::Instant;
 
 use colors_transform::{Color, Hsl};
 use image::{Rgb, RgbImage};
-use num::complex::ComplexFloat;
+use nalgebra::{matrix, SMatrix, SVector};
 use num::Complex;
 use rayon::prelude::*;
+
+type ComplexMatrix3x3 = SMatrix<Complex<f64>, 3, 3>;
+type ComplexVector3 = SVector<Complex<f64>, 3>;
 
 const MAX_ITERATIONS: usize = 128;
 
@@ -38,13 +41,16 @@ fn get_color(count: f64) -> Rgb<u8> {
 /// origin. If `c` seems to be a member (more precisely, if we reached the
 /// iteration limit without being able to prove that `c` is not a member),
 /// return `None`.
-fn escape_time(c: Complex<f64>, limit: usize) -> Option<(usize, f64)> {
-    let mut z = Complex { re: 0.0, im: 0.0 };
+fn escape_time(c: Complex<f64>, mat: ComplexMatrix3x3, limit: usize) -> Option<(usize, f64)> {
+    let mut z = ComplexVector3::repeat(Complex { re: 0.0, im: 0.0 });
+    let mut matz = mat * z;
+
     for i in 0..limit {
-        if z.norm_sqr() > 4.0 {
-            return Some((i, (i as f64) + 1.0 - z.abs().ln().log2()));
+        if z.norm_squared() > 2000.0 {
+            return Some((i, (i as f64) + 1.0 - z.norm().ln().log2()));
         }
-        z = z * z + c;
+        z = matz.component_mul(&matz).add_scalar(c);
+        matz = mat * z;
     }
 
     None
@@ -82,6 +88,7 @@ fn pixel_to_point(
 /// left and lower-right corners of the pixel buffer.
 fn render(
     pixels: &mut [u8],
+    mat: ComplexMatrix3x3,
     bounds: (usize, usize),
     upper_left: Complex<f64>,
     lower_right: Complex<f64>,
@@ -91,7 +98,7 @@ fn render(
     for row in 0..bounds.1 {
         for column in 0..bounds.0 {
             let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match escape_time(point, MAX_ITERATIONS) {
+            let color = match escape_time(point, mat, MAX_ITERATIONS) {
                 None => Rgb([0, 0, 0]),
                 Some((_, count)) => get_color(count),
             };
@@ -106,10 +113,18 @@ fn render(
 
 fn main() {
     let bounds = (10000 as usize, 8000 as usize);
+    // let upper_left = Complex { re: -2.0, im: 1.0 };
+    // let lower_right = Complex { re: 0.5, im: -1.0 };
     let upper_left = Complex { re: -2.0, im: 1.0 };
     let lower_right = Complex { re: 0.5, im: -1.0 };
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
+
+    let mat = matrix![
+        Complex{re:1.0, im: 0.0}, Complex{re:0.0, im: 0.0}, Complex{re:0.0, im: 0.0};
+        Complex{re:-1.0, im: 0.0}, Complex{re:1.0, im: 0.0}, Complex{re:0.0, im: 0.0};
+        Complex{re:1.0, im: 0.0}, Complex{re:1.0, im: 0.0}, Complex{re:-1.0, im: 0.0};
+    ];
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
@@ -123,7 +138,7 @@ fn main() {
             let band_upper_left = pixel_to_point(bounds, (0, top), upper_left, lower_right);
             let band_lower_right =
                 pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
-            render(band, band_bounds, band_upper_left, band_lower_right);
+            render(band, mat, band_bounds, band_upper_left, band_lower_right);
         });
     }
     let elapsed = now.elapsed().as_millis() as f32 / 1000.0;

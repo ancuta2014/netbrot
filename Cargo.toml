@@ -8,3 +8,4 @@ image = { version = "0.25", "features" = ["png"] }
 rayon = "1.5"
 num = "0.4"
 colors-transform = "0.2"
+nalgebra = "0.32"
