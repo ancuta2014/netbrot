@@ -12,7 +12,13 @@ use rayon::prelude::*;
 type ComplexMatrix3x3 = SMatrix<Complex<f64>, 3, 3>;
 type ComplexVector3 = SVector<Complex<f64>, 3>;
 
-const MAX_ITERATIONS: usize = 128;
+const MAX_ITERATIONS: usize = 256;
+
+macro_rules! c64 {
+    ($re: literal) => {
+        Complex { re: $re, im: 0.0 }
+    };
+}
 
 fn get_color(count: f64) -> Rgb<u8> {
     let hue = (count / (MAX_ITERATIONS as f64) * 360.0).round() as f32;
@@ -24,12 +30,6 @@ fn get_color(count: f64) -> Rgb<u8> {
     };
     let (r, g, b) = Hsl::from(hue, saturation, lightness).to_rgb().as_tuple();
 
-    // if count < MAX_ITERATIONS {
-    //     println!("HSV {:.2} {:.2} {:.2} RGB {:.2} {:.2} {:.2}", hue, saturation, value, r, g, b);
-    //     // assert!(1 == 0);
-    // }
-
-    // return Rgb([hue as u8, hue as u8, hue as u8]);
     return Rgb([b as u8, g as u8, r as u8]);
 }
 
@@ -46,7 +46,7 @@ fn escape_time(c: Complex<f64>, mat: ComplexMatrix3x3, limit: usize) -> Option<(
     let mut matz = mat * z;
 
     for i in 0..limit {
-        if z.norm_squared() > 2000.0 {
+        if z.norm_squared() > 10000.0 {
             return Some((i, (i as f64) + 1.0 - z.norm().ln().log2()));
         }
         z = matz.component_mul(&matz).add_scalar(c);
@@ -112,18 +112,35 @@ fn render(
 }
 
 fn main() {
-    let bounds = (10000 as usize, 8000 as usize);
-    // let upper_left = Complex { re: -2.0, im: 1.0 };
-    // let lower_right = Complex { re: 0.5, im: -1.0 };
-    let upper_left = Complex { re: -2.0, im: 1.0 };
-    let lower_right = Complex { re: 0.5, im: -1.0 };
+    // Full brot interval
+    let upper_left = Complex {
+        re: -1.25,
+        im: 0.75,
+    };
+    let lower_right = Complex {
+        re: 0.50,
+        im: -0.75,
+    };
+    // Baby brot interval
+    // let upper_left = Complex {
+    //     re: -1.05,
+    //     im: 0.05,
+    // };
+    // let lower_right = Complex {
+    //     re: -0.95,
+    //     im: -0.05,
+    // };
+
+    let ratio = (lower_right.re - upper_left.re) / (upper_left.im - lower_right.im);
+    let resolution = 8000.0 as f64;
+    let bounds = ((ratio * resolution).round() as usize, resolution as usize);
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
     let mat = matrix![
-        Complex{re:1.0, im: 0.0}, Complex{re:0.0, im: 0.0}, Complex{re:0.0, im: 0.0};
-        Complex{re:-1.0, im: 0.0}, Complex{re:1.0, im: 0.0}, Complex{re:0.0, im: 0.0};
-        Complex{re:1.0, im: 0.0}, Complex{re:1.0, im: 0.0}, Complex{re:-1.0, im: 0.0};
+        c64!(1.0), c64!(0.0), c64!(0.0);
+        c64!(-1.0), c64!(1.0), c64!(0.0);
+        c64!(1.0), c64!(1.0), c64!(-1.0);
     ];
 
     // Scope of slicing up `pixels` into horizontal bands.
