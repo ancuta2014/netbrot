@@ -1,14 +1,33 @@
 #![warn(rust_2018_idioms)]
 #![allow(elided_lifetimes_in_paths)]
 
-use num::Complex;
-use rayon::prelude::*;
 use std::time::Instant;
 
-const MAX_ITERATIONS: usize = 512;
+use colors_transform::{Color, Hsl};
+use image::{Rgb, RgbImage};
+use num::complex::ComplexFloat;
+use num::Complex;
+use rayon::prelude::*;
 
-fn get_color(count: usize) -> u8 {
-    255 - (((count as f32) / (MAX_ITERATIONS as f32)) * 255.0).round() as u8
+const MAX_ITERATIONS: usize = 128;
+
+fn get_color(count: f64) -> Rgb<u8> {
+    let hue = (count / (MAX_ITERATIONS as f64) * 360.0).round() as f32;
+    let saturation = 100.0;
+    let lightness = if count < (MAX_ITERATIONS as f64) {
+        50.0
+    } else {
+        0.0
+    };
+    let (r, g, b) = Hsl::from(hue, saturation, lightness).to_rgb().as_tuple();
+
+    // if count < MAX_ITERATIONS {
+    //     println!("HSV {:.2} {:.2} {:.2} RGB {:.2} {:.2} {:.2}", hue, saturation, value, r, g, b);
+    //     // assert!(1 == 0);
+    // }
+
+    // return Rgb([hue as u8, hue as u8, hue as u8]);
+    return Rgb([b as u8, g as u8, r as u8]);
 }
 
 /// Try to determine if `c` is in the Mandelbrot set, using at most `limit`
@@ -19,11 +38,11 @@ fn get_color(count: usize) -> u8 {
 /// origin. If `c` seems to be a member (more precisely, if we reached the
 /// iteration limit without being able to prove that `c` is not a member),
 /// return `None`.
-fn escape_time(c: Complex<f64>, limit: usize) -> Option<usize> {
+fn escape_time(c: Complex<f64>, limit: usize) -> Option<(usize, f64)> {
     let mut z = Complex { re: 0.0, im: 0.0 };
     for i in 0..limit {
         if z.norm_sqr() > 4.0 {
-            return Some(i);
+            return Some((i, (i as f64) + 1.0 - z.abs().ln().log2()));
         }
         z = z * z + c;
     }
@@ -67,38 +86,22 @@ fn render(
     upper_left: Complex<f64>,
     lower_right: Complex<f64>,
 ) {
-    assert!(pixels.len() == bounds.0 * bounds.1);
+    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
 
     for row in 0..bounds.1 {
         for column in 0..bounds.0 {
             let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            pixels[row * bounds.0 + column] = match escape_time(point, MAX_ITERATIONS) {
-                None => 0,
-                Some(count) => get_color(count),
+            let color = match escape_time(point, MAX_ITERATIONS) {
+                None => Rgb([0, 0, 0]),
+                Some((_, count)) => get_color(count),
             };
+
+            let index = row * bounds.0 + 3 * column;
+            pixels[index + 0] = color[0];
+            pixels[index + 1] = color[1];
+            pixels[index + 2] = color[2];
         }
     }
-}
-
-use image::codecs::png::PngEncoder;
-use image::error::ImageError;
-use image::{ExtendedColorType, ImageEncoder};
-use std::fs::File;
-
-/// Write the buffer `pixels`, whose dimensions are given by `bounds`, to the
-/// file named `filename`.
-fn write_image(filename: &str, pixels: &[u8], bounds: (usize, usize)) -> Result<(), ImageError> {
-    let output = File::create(filename)?;
-
-    let encoder = PngEncoder::new(output);
-    encoder.write_image(
-        &pixels,
-        bounds.0 as u32,
-        bounds.1 as u32,
-        ExtendedColorType::L8,
-    )?;
-
-    Ok(())
 }
 
 fn main() {
@@ -106,13 +109,13 @@ fn main() {
     let upper_left = Complex { re: -2.0, im: 1.0 };
     let lower_right = Complex { re: 0.5, im: -1.0 };
 
-    let mut pixels = vec![0; bounds.0 * bounds.1];
+    let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
     let now = Instant::now();
     {
-        let bands: Vec<(usize, &mut [u8])> = pixels.chunks_mut(bounds.0).enumerate().collect();
+        let bands: Vec<(usize, &mut [u8])> = pixels.chunks_mut(3 * bounds.0).enumerate().collect();
 
         bands.into_par_iter().for_each(|(i, band)| {
             let top = i;
@@ -126,5 +129,5 @@ fn main() {
     let elapsed = now.elapsed().as_millis() as f32 / 1000.0;
     println!("Elapsed {}s!", elapsed);
 
-    write_image("mandelbrot.png", &pixels, bounds).expect("error writing PNG file");
+    pixels.save("mandelbrot.png").unwrap();
 }
