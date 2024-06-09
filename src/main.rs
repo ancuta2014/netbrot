@@ -9,10 +9,85 @@ use nalgebra::{matrix, SMatrix, SVector};
 use num::Complex;
 use rayon::prelude::*;
 
-type ComplexMatrix3x3 = SMatrix<Complex<f64>, 3, 3>;
-type ComplexVector3 = SVector<Complex<f64>, 3>;
+type ComplexMatrix = SMatrix<Complex<f64>, 3, 3>;
+type ComplexVector = SVector<Complex<f64>, 3>;
 
-const MAX_ITERATIONS: usize = 256;
+const MAX_ESCAPE_RADIUS_SQUARED: f64 = 100.0 * 100.0;
+const MAX_PERIODS: usize = 20;
+const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
+const MAX_ITERATIONS: usize = 512;
+
+// https://graphicdesign.stackexchange.com/a/158793
+const _COLOR_PALLETTE_V1: [Rgb<u8>; 32] = [
+    Rgb([173, 216, 230]),
+    Rgb([0, 191, 255]),
+    Rgb([30, 144, 255]),
+    Rgb([0, 0, 255]),
+    Rgb([0, 0, 139]),
+    Rgb([72, 61, 139]),
+    Rgb([123, 104, 238]),
+    Rgb([138, 43, 226]),
+    Rgb([128, 0, 128]),
+    Rgb([218, 112, 214]),
+    Rgb([255, 0, 255]),
+    Rgb([255, 20, 147]),
+    Rgb([176, 48, 96]),
+    Rgb([220, 20, 60]),
+    Rgb([240, 128, 128]),
+    Rgb([255, 69, 0]),
+    Rgb([255, 165, 0]),
+    Rgb([244, 164, 96]),
+    Rgb([240, 230, 140]),
+    Rgb([128, 128, 0]),
+    Rgb([139, 69, 19]),
+    Rgb([255, 255, 0]),
+    Rgb([154, 205, 50]),
+    Rgb([124, 252, 0]),
+    Rgb([144, 238, 144]),
+    Rgb([143, 188, 143]),
+    Rgb([34, 139, 34]),
+    Rgb([0, 255, 127]),
+    Rgb([0, 255, 255]),
+    Rgb([0, 139, 139]),
+    Rgb([128, 128, 128]),
+    Rgb([255, 255, 255]),
+];
+
+// https://lospec.com/palette-list/endesga-32
+const _COLOR_PALLETTE_V2: [Rgb<u8>; 32] = [
+    Rgb([190, 74, 47]),
+    Rgb([215, 118, 67]),
+    Rgb([234, 212, 170]),
+    Rgb([228, 166, 114]),
+    Rgb([184, 111, 80]),
+    Rgb([115, 62, 57]),
+    Rgb([62, 39, 49]),
+    Rgb([162, 38, 51]),
+    Rgb([228, 59, 68]),
+    Rgb([247, 118, 34]),
+    Rgb([254, 174, 52]),
+    Rgb([254, 231, 97]),
+    Rgb([99, 199, 77]),
+    Rgb([62, 137, 72]),
+    Rgb([38, 92, 66]),
+    Rgb([25, 60, 62]),
+    Rgb([18, 78, 137]),
+    Rgb([0, 153, 219]),
+    Rgb([44, 232, 245]),
+    Rgb([192, 203, 220]),
+    Rgb([139, 155, 180]),
+    Rgb([90, 105, 136]),
+    Rgb([58, 68, 102]),
+    Rgb([38, 43, 68]),
+    Rgb([24, 20, 37]),
+    Rgb([255, 0, 68]),
+    Rgb([104, 56, 108]),
+    Rgb([181, 80, 136]),
+    Rgb([246, 117, 122]),
+    Rgb([232, 183, 150]),
+    Rgb([194, 133, 105]),
+    Rgb([255, 255, 255]),
+];
 
 macro_rules! c64 {
     ($re: literal) => {
@@ -20,7 +95,7 @@ macro_rules! c64 {
     };
 }
 
-fn get_color(count: f64) -> Rgb<u8> {
+fn get_orbit_color(count: f64) -> Rgb<u8> {
     let hue = (count / (MAX_ITERATIONS as f64) * 360.0).round() as f32;
     let saturation = 100.0;
     let lightness = if count < (MAX_ITERATIONS as f64) {
@@ -33,6 +108,14 @@ fn get_color(count: f64) -> Rgb<u8> {
     return Rgb([b as u8, g as u8, r as u8]);
 }
 
+fn get_period_color(period: usize) -> Rgb<u8> {
+    if 1 <= period && period < MAX_PERIODS - 1 {
+        _COLOR_PALLETTE_V1[period - 1]
+    } else {
+        Rgb([0, 0, 0])
+    }
+}
+
 /// Try to determine if `c` is in the Mandelbrot set, using at most `limit`
 /// iterations to decide.
 ///
@@ -41,19 +124,57 @@ fn get_color(count: f64) -> Rgb<u8> {
 /// origin. If `c` seems to be a member (more precisely, if we reached the
 /// iteration limit without being able to prove that `c` is not a member),
 /// return `None`.
-fn escape_time(c: Complex<f64>, mat: ComplexMatrix3x3, limit: usize) -> Option<(usize, f64)> {
-    let mut z = ComplexVector3::repeat(Complex { re: 0.0, im: 0.0 });
-    let mut matz = mat * z;
+
+fn escape_time(
+    c: Complex<f64>,
+    mat: ComplexMatrix,
+    limit: usize,
+) -> (Option<usize>, ComplexVector) {
+    let mut z = ComplexVector::repeat(Complex { re: 0.0, im: 0.0 });
+    let mut matz = ComplexVector::repeat(Complex { re: 0.0, im: 0.0 });
 
     for i in 0..limit {
-        if z.norm_squared() > 10000.0 {
-            return Some((i, (i as f64) + 1.0 - z.norm().ln().log2()));
+        if z.norm_squared() > MAX_ESCAPE_RADIUS_SQUARED {
+            return (Some(i), z);
         }
         z = matz.component_mul(&matz).add_scalar(c);
         matz = mat * z;
     }
 
-    None
+    (None, z)
+}
+
+fn escape_period(c: Complex<f64>, mat: ComplexMatrix, limit: usize) -> Option<usize> {
+    match escape_time(c, mat, limit) {
+        (None, z) => {
+            // When the limit was reached but the point did not escape, we look
+            // for a period in a very naive way.
+            let mut matz = mat * z;
+            let mut z_period = vec![ComplexVector::zeros(); PERIOD_WINDOW];
+
+            // Evaluate some more points
+            z_period[0] = z;
+            for i in 1..PERIOD_WINDOW {
+                z_period[i] = matz.component_mul(&matz).add_scalar(c);
+                matz = mat * z_period[i];
+            }
+
+            // Check newly evaluated points for periodicity
+            for i in 2..MAX_PERIODS {
+                let mut z_period_norm = 0.0;
+                for j in 0..i {
+                    z_period_norm += (z_period[j] - z_period[i + j]).norm_squared();
+                }
+
+                if z_period_norm.sqrt() < 1.0e-4 * z.norm() {
+                    return Some(i - 1);
+                }
+            }
+
+            Some(MAX_PERIODS - 1)
+        }
+        (Some(_), _) => None,
+    }
 }
 
 /// Given the row and column of a pixel in the output image, return the
@@ -74,9 +195,10 @@ fn pixel_to_point(
         upper_left.im - lower_right.im,
     );
     Complex {
-        re: upper_left.re + pixel.0 as f64 * width / bounds.0 as f64,
-        im: upper_left.im - pixel.1 as f64 * height / bounds.1 as f64, // Why subtraction here? pixel.1 increases as we go down,
-                                                                       // but the imaginary component increases as we go up.
+        // Why subtraction here? pixel.1 increases as we go down,
+        re: upper_left.re + (pixel.0 as f64) * width / (bounds.0 as f64),
+        // but the imaginary component increases as we go up.
+        im: upper_left.im - (pixel.1 as f64) * height / (bounds.1 as f64),
     }
 }
 
@@ -86,9 +208,9 @@ fn pixel_to_point(
 /// which holds one grayscale pixel per byte. The `upper_left` and `lower_right`
 /// arguments specify points on the complex plane corresponding to the upper-
 /// left and lower-right corners of the pixel buffer.
-fn render(
+fn render_orbit(
     pixels: &mut [u8],
-    mat: ComplexMatrix3x3,
+    mat: ComplexMatrix,
     bounds: (usize, usize),
     upper_left: Complex<f64>,
     lower_right: Complex<f64>,
@@ -99,8 +221,34 @@ fn render(
         for column in 0..bounds.0 {
             let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
             let color = match escape_time(point, mat, MAX_ITERATIONS) {
-                None => Rgb([0, 0, 0]),
-                Some((_, count)) => get_color(count),
+                (None, _) => Rgb([0, 0, 0]),
+                // https://linas.org/art-gallery/escape/escape.html
+                (Some(n), z) => get_orbit_color((n as f64) + 1.0 - z.norm().ln().log2()),
+            };
+
+            let index = row * bounds.0 + 3 * column;
+            pixels[index + 0] = color[0];
+            pixels[index + 1] = color[1];
+            pixels[index + 2] = color[2];
+        }
+    }
+}
+
+fn render_period(
+    pixels: &mut [u8],
+    mat: ComplexMatrix,
+    bounds: (usize, usize),
+    upper_left: Complex<f64>,
+    lower_right: Complex<f64>,
+) {
+    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
+
+    for row in 0..bounds.1 {
+        for column in 0..bounds.0 {
+            let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
+            let color = match escape_period(point, mat, MAX_ITERATIONS) {
+                None => Rgb([255, 255, 255]),
+                Some(period) => get_period_color(period),
             };
 
             let index = row * bounds.0 + 3 * column;
@@ -112,6 +260,8 @@ fn render(
 }
 
 fn main() {
+    let plot_orbit = false;
+
     // Full brot interval
     let upper_left = Complex {
         re: -1.25,
@@ -132,7 +282,7 @@ fn main() {
     // };
 
     let ratio = (lower_right.re - upper_left.re) / (upper_left.im - lower_right.im);
-    let resolution = 8000.0 as f64;
+    let resolution = 2.0 * 8000.0 as f64;
     let bounds = ((ratio * resolution).round() as usize, resolution as usize);
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
@@ -155,7 +305,11 @@ fn main() {
             let band_upper_left = pixel_to_point(bounds, (0, top), upper_left, lower_right);
             let band_lower_right =
                 pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
-            render(band, mat, band_bounds, band_upper_left, band_lower_right);
+            if plot_orbit {
+                render_orbit(band, mat, band_bounds, band_upper_left, band_lower_right);
+            } else {
+                render_period(band, mat, band_bounds, band_upper_left, band_lower_right);
+            }
         });
     }
     let elapsed = now.elapsed().as_millis() as f32 / 1000.0;
