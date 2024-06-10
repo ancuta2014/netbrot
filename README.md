@@ -48,3 +48,10 @@ As a simple example, we take the matrix
 <p align="center">
     <img src="https://github.com/alexfikl/netbrot/blob/main/docs/netbrot-2x2.png?raw=true" alt="Netbrot 2x2"/>
 </p>
+
+License
+-------
+
+The code is MIT licensed (see `LICENSES/MIT.txt`). It was originally copied
+from the Rust Programming example [here](https://github.com/ProgrammingRust/mandelbrot)
+and has since evolved a bit.
