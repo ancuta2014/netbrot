@@ -8,7 +8,15 @@ f(z) = (A z)^2 + c,$$
 ```
 where $A \in \mathbb{C}^{n \times n}$ and $z \in \mathbb{C}^n$ with just
 $c \in \mathbb{C}$. This gives some interesting results that are not directly
-analogous to the standard scalar case.
+analogous to the standard scalar case:
+
+* The escape radius is no longer just $2$.
+* The periodicity of the various points is weirder.
+* There are (possibly) multiple attractive or repelling fixed points, not just
+  $z = 0 + 0\imath$.
+
+Additional math needed! Most of these ideas have no proofs at the moment, but
+seem fun to investigate!
 
 Install
 -------
