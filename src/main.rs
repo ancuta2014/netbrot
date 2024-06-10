@@ -1,3 +1,12 @@
+// SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
+// SPDX-License-Identifier: MIT
+
+// SPDX-FileCopyrightText: 2016-2024 RustProgramming
+// SPDX-License-Identifier: MIT
+
+// NOTE: an initial version of this code was taken from
+// https://github.com/ProgrammingRust/mandelbrot/blob/f10fe6859f9fea0d8b2f3d22bb62df8904303de2/src/main.rs
+
 #![warn(rust_2018_idioms)]
 #![allow(elided_lifetimes_in_paths)]
 
@@ -10,14 +19,14 @@ use nalgebra::{matrix, SMatrix, SVector};
 use num::Complex;
 use rayon::prelude::*;
 
-type ComplexMatrix = SMatrix<Complex<f64>, 3, 3>;
-type ComplexVector = SVector<Complex<f64>, 3>;
+type ComplexMatrix = SMatrix<Complex<f64>, 2, 2>;
+type ComplexVector = SVector<Complex<f64>, 2>;
 
 const MAX_ESCAPE_RADIUS: f64 = 100.0;
 const MAX_ESCAPE_RADIUS_SQUARED: f64 = MAX_ESCAPE_RADIUS * MAX_ESCAPE_RADIUS;
 const MAX_PERIODS: usize = 20;
 const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
-const MAX_ITERATIONS: usize = 256;
+const MAX_ITERATIONS: usize = 128;
 
 // https://graphicdesign.stackexchange.com/a/158793
 const _COLOR_PALLETTE_V1: [Rgb<u8>; 32] = [
@@ -328,20 +337,17 @@ fn main() {
     println!("Coloring: {:?}", color_type);
 
     // Full brot interval
-    // let upper_left = Complex {
-    //     re: -1.25,
-    //     im: 0.75,
-    // };
-    // let lower_right = Complex { re: 0.5, im: -0.75 };
+    let upper_left = Complex { re: -0.9, im: 0.6 };
+    let lower_right = Complex { re: 0.5, im: -0.6 };
     // Baby brot interval
-    let upper_left = Complex {
-        re: -1.025,
-        im: 0.025,
-    };
-    let lower_right = Complex {
-        re: -0.975,
-        im: -0.025,
-    };
+    // let upper_left = Complex {
+    //     re: -1.025,
+    //     im: 0.025,
+    // };
+    // let lower_right = Complex {
+    //     re: -0.975,
+    //     im: -0.025,
+    // };
     println!(
         "Bounding box: Top left {} Bottom right {}",
         upper_left, lower_right
@@ -354,15 +360,15 @@ fn main() {
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
-    let mat = matrix![
-        c64!(1.0), c64!(0.0), c64!(0.0);
-        c64!(-1.0), c64!(1.0), c64!(0.0);
-        c64!(1.0), c64!(1.0), c64!(-1.0);
-    ];
     // let mat = matrix![
-    //     c64!(1.0), c64!(0.8);
-    //     c64!(1.0), c64!(-0.5);
+    //     c64!(1.0), c64!(0.0), c64!(0.0);
+    //     c64!(-1.0), c64!(1.0), c64!(0.0);
+    //     c64!(1.0), c64!(1.0), c64!(-1.0);
     // ];
+    let mat = matrix![
+        c64!(1.0), c64!(0.8);
+        c64!(1.0), c64!(-0.5);
+    ];
     // let mat = matrix![
     //     c64!(1.0), c64!(1.0);
     //     c64!(0.0), c64!(1.0);
