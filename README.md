@@ -41,7 +41,7 @@ As a simple example, we take the matrix
 ```math
 \begin{bmatrix}
 1 & 0.8 \\
--1 & -0.5 \\
+-1 & -0.5
 \end{bmatrix}
 ```
 
