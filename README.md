@@ -33,3 +33,18 @@ and it can also look at periodicity of various points
 ```
 netbrot --color period -- out.png
 ```
+
+Example
+-------
+
+As a simple example, we take the matrix
+```math
+\begin{bmatrix}
+1 & 0.8 \\
+-1 & -0.5 \\
+\end{bmatrix}
+```
+
+<p align="center">
+    <img src="https://github.com/alexfikl/netbrot/blob/main/docs/netbrot-2x2.png?raw=true" alt="Netbrot 2x2"/>
+</p>
