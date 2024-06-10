@@ -3,6 +3,7 @@
 
 use std::time::Instant;
 
+use clap::{Parser, ValueEnum, ValueHint};
 use colors_transform::{Color, Hsl};
 use image::{Rgb, RgbImage};
 use nalgebra::{matrix, SMatrix, SVector};
@@ -12,10 +13,11 @@ use rayon::prelude::*;
 type ComplexMatrix = SMatrix<Complex<f64>, 3, 3>;
 type ComplexVector = SVector<Complex<f64>, 3>;
 
-const MAX_ESCAPE_RADIUS_SQUARED: f64 = 100.0 * 100.0;
+const MAX_ESCAPE_RADIUS: f64 = 100.0;
+const MAX_ESCAPE_RADIUS_SQUARED: f64 = MAX_ESCAPE_RADIUS * MAX_ESCAPE_RADIUS;
 const MAX_PERIODS: usize = 20;
 const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
-const MAX_ITERATIONS: usize = 512;
+const MAX_ITERATIONS: usize = 256;
 
 // https://graphicdesign.stackexchange.com/a/158793
 const _COLOR_PALLETTE_V1: [Rgb<u8>; 32] = [
@@ -89,6 +91,41 @@ const _COLOR_PALLETTE_V2: [Rgb<u8>; 32] = [
     Rgb([255, 255, 255]),
 ];
 
+const _COLOR_PALLETTE_V3: [Rgb<u8>; 32] = [
+    Rgb([75, 0, 85]),
+    Rgb([123, 0, 140]),
+    Rgb([134, 0, 151]),
+    Rgb([56, 0, 163]),
+    Rgb([0, 0, 181]),
+    Rgb([0, 0, 213]),
+    Rgb([0, 56, 221]),
+    Rgb([0, 125, 221]),
+    Rgb([0, 146, 221]),
+    Rgb([0, 160, 199]),
+    Rgb([0, 170, 168]),
+    Rgb([0, 170, 144]),
+    Rgb([0, 163, 83]),
+    Rgb([0, 154, 0]),
+    Rgb([0, 175, 0]),
+    Rgb([0, 199, 0]),
+    Rgb([0, 220, 0]),
+    Rgb([0, 242, 0]),
+    Rgb([44, 255, 0]),
+    Rgb([176, 255, 0]),
+    Rgb([216, 245, 0]),
+    Rgb([241, 231, 0]),
+    Rgb([252, 210, 0]),
+    Rgb([255, 177, 0]),
+    Rgb([255, 129, 0]),
+    Rgb([255, 33, 0]),
+    Rgb([241, 0, 0]),
+    Rgb([219, 0, 0]),
+    Rgb([208, 0, 0]),
+    Rgb([204, 76, 76]),
+    Rgb([204, 204, 204]),
+    Rgb([0, 0, 0]),
+];
+
 macro_rules! c64 {
     ($re: literal) => {
         Complex { re: $re, im: 0.0 }
@@ -110,7 +147,7 @@ fn get_orbit_color(count: f64) -> Rgb<u8> {
 
 fn get_period_color(period: usize) -> Rgb<u8> {
     if 1 <= period && period < MAX_PERIODS - 1 {
-        _COLOR_PALLETTE_V1[period - 1]
+        _COLOR_PALLETTE_V3[period - 1]
     } else {
         Rgb([0, 0, 0])
     }
@@ -162,11 +199,11 @@ fn escape_period(c: Complex<f64>, mat: ComplexMatrix, limit: usize) -> Option<us
             // Check newly evaluated points for periodicity
             for i in 2..MAX_PERIODS {
                 let mut z_period_norm = 0.0;
-                for j in 0..i {
-                    z_period_norm += (z_period[j] - z_period[i + j]).norm_squared();
+                for j in 0..i - 1 {
+                    z_period_norm += (z_period[j] - z_period[i + j - 1]).norm_squared();
                 }
 
-                if z_period_norm.sqrt() < 1.0e-4 * z.norm() {
+                if z_period_norm.sqrt() < 1.0e-5 {
                     return Some(i - 1);
                 }
             }
@@ -259,31 +296,61 @@ fn render_period(
     }
 }
 
+#[derive(Parser, Debug)]
+#[clap(version, about)]
+struct Cli {
+    /// If given, plot periods instead of orbits
+    #[arg(short, long, value_enum, default_value = "orbit")]
+    color: ColorType,
+
+    /// Resolution of the resulting image
+    #[arg(short, long, default_value_t = 8000)]
+    resolution: u32,
+
+    /// Output file name
+    #[arg(last = true, value_hint = ValueHint::FilePath)]
+    filename: String,
+}
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+enum ColorType {
+    /// Plot orbits.
+    Orbit,
+    /// Plot periodicity for orbits that do not escape.
+    Period,
+}
+
 fn main() {
-    let plot_orbit = false;
+    let args = Cli::parse();
+
+    let color_type = args.color;
+    let filename = args.filename;
+    println!("Coloring: {:?}", color_type);
 
     // Full brot interval
+    // let upper_left = Complex {
+    //     re: -1.25,
+    //     im: 0.75,
+    // };
+    // let lower_right = Complex { re: 0.5, im: -0.75 };
+    // Baby brot interval
     let upper_left = Complex {
-        re: -1.25,
-        im: 0.75,
+        re: -1.025,
+        im: 0.025,
     };
     let lower_right = Complex {
-        re: 0.50,
-        im: -0.75,
+        re: -0.975,
+        im: -0.025,
     };
-    // Baby brot interval
-    // let upper_left = Complex {
-    //     re: -1.05,
-    //     im: 0.05,
-    // };
-    // let lower_right = Complex {
-    //     re: -0.95,
-    //     im: -0.05,
-    // };
+    println!(
+        "Bounding box: Top left {} Bottom right {}",
+        upper_left, lower_right
+    );
 
     let ratio = (lower_right.re - upper_left.re) / (upper_left.im - lower_right.im);
-    let resolution = 2.0 * 8000.0 as f64;
+    let resolution = args.resolution as f64;
     let bounds = ((ratio * resolution).round() as usize, resolution as usize);
+    println!("Resolution: {}x{}", bounds.0, bounds.1);
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
@@ -292,6 +359,14 @@ fn main() {
         c64!(-1.0), c64!(1.0), c64!(0.0);
         c64!(1.0), c64!(1.0), c64!(-1.0);
     ];
+    // let mat = matrix![
+    //     c64!(1.0), c64!(0.8);
+    //     c64!(1.0), c64!(-0.5);
+    // ];
+    // let mat = matrix![
+    //     c64!(1.0), c64!(1.0);
+    //     c64!(0.0), c64!(1.0);
+    // ];
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
@@ -305,15 +380,19 @@ fn main() {
             let band_upper_left = pixel_to_point(bounds, (0, top), upper_left, lower_right);
             let band_lower_right =
                 pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
-            if plot_orbit {
-                render_orbit(band, mat, band_bounds, band_upper_left, band_lower_right);
-            } else {
-                render_period(band, mat, band_bounds, band_upper_left, band_lower_right);
+
+            match color_type {
+                ColorType::Orbit => {
+                    render_orbit(band, mat, band_bounds, band_upper_left, band_lower_right)
+                }
+                ColorType::Period => {
+                    render_period(band, mat, band_bounds, band_upper_left, band_lower_right)
+                }
             }
         });
     }
     let elapsed = now.elapsed().as_millis() as f32 / 1000.0;
     println!("Elapsed {}s!", elapsed);
 
-    pixels.save("mandelbrot.png").unwrap();
+    pixels.save(filename).unwrap();
 }
