@@ -8,8 +8,13 @@ help: 			## Show this help
 	@echo ""
 .PHONY: help
 
-format: 					## Run all formatting scripts
+format: rustfmt					## Run all formatting scripts
 .PHONY: format
+
+rustfmt:						## Run rustfmt
+	rustfmt src/*.rs
+	@echo -e "\e[1;32mrustfmt clean!\e[0m"
+.PHONY: rustfmt
 
 lint: codespell reuse 			## Run linting checks
 .PHONY: lint

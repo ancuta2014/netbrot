@@ -144,7 +144,7 @@ pub fn get_period_color(p: usize, limit: usize, version: u8) -> Rgb<u8> {
             1 => COLOR_PALLETTE_V1[p - 1],
             2 => COLOR_PALLETTE_V2[p - 1],
             3 => COLOR_PALLETTE_V3[p - 1],
-            _ => panic!("Invalid color pallette version"),
+            _ => panic!("Invalid color palette version"),
         }
     } else {
         Rgb([0, 0, 0])
