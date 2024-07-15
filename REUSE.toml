@@ -1,0 +1,19 @@
+# SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
+# SPDX-License-Identifier: CC0-1.0
+
+version = 1
+SPDX-PackageName = "netbrot"
+SPDX-PackageSupplier = "Alexandru Fikl <alexfikl@gmail.com>"
+SPDX-PackageDownloadLocation = "https://github.com/alexfikl/netbrot"
+
+[[annotations]]
+path = [".gitignore", "Cargo.toml", "Cargo.lock", "Makefile", "README.md"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Alexandru Fikl <alexfikl@gmail.com>"
+SPDX-License-Identifier = "CC0-1.0"
+
+[[annotations]]
+path = ["docs/**.png"]
+precedence = "aggregate"
+SPDX-FileCopyrightText = "2024 Alexandru Fikl <alexfikl@gmail.com>"
+SPDX-License-Identifier = "CC0-1.0"
