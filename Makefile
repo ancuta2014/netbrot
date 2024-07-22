@@ -16,16 +16,13 @@ rustfmt:						## Run rustfmt
 	@echo -e "\e[1;32mrustfmt clean!\e[0m"
 .PHONY: rustfmt
 
-lint: codespell reuse 			## Run linting checks
+lint: typos reuse 				## Run linting checks
 .PHONY: lint
 
-codespell:		## Run codespell checks over the documentation
-	@codespell --summary \
-		--uri-ignore-words-list '*' \
-		--ignore-words .codespell-ignore \
-		src README.rst
-	@echo -e "\e[1;32mcodespell clean!\e[0m"
-.PHONY: codespell
+typos:			## Run typos over the source code and documentation
+	@typos
+	@echo -e "\e[1;32mtypos clean!\e[0m"
+.PHONY: typos
 
 reuse:			## Check REUSE license compliance
 	$(PYTHON) -m reuse lint
