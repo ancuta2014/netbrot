@@ -11,16 +11,15 @@
 #![allow(elided_lifetimes_in_paths)]
 
 mod colorschemes;
-use colorschemes::{get_period_color, get_smooth_orbit_color};
+mod netbrot;
 
-mod mandelbrot;
-use mandelbrot::{netbrot_orbit_escape, netbrot_orbit_period, MAX_PERIODS};
+use netbrot::{pixel_to_point, render_orbit, render_period, Netbrot};
 
 use std::time::Instant;
 
 use clap::{Parser, ValueEnum, ValueHint};
-use image::{Rgb, RgbImage};
-use nalgebra::{matrix, vector, SMatrix, SVector};
+use image::RgbImage;
+use nalgebra::{matrix, vector};
 use num::Complex;
 use rayon::prelude::*;
 
@@ -31,80 +30,6 @@ macro_rules! c64 {
         Complex { re: $re, im: 0.0 }
     };
 }
-
-// {{{ Rendering
-
-fn pixel_to_point(
-    bounds: (usize, usize),
-    pixel: (usize, usize),
-    upper_left: Complex<f64>,
-    lower_right: Complex<f64>,
-) -> Complex<f64> {
-    let (width, height) = (
-        lower_right.re - upper_left.re,
-        upper_left.im - lower_right.im,
-    );
-    Complex {
-        // Why subtraction here? pixel.1 increases as we go down,
-        re: upper_left.re + (pixel.0 as f64) * width / (bounds.0 as f64),
-        // but the imaginary component increases as we go up.
-        im: upper_left.im - (pixel.1 as f64) * height / (bounds.1 as f64),
-    }
-}
-
-fn render_orbit<const D: usize>(
-    pixels: &mut [u8],
-    mat: SMatrix<Complex<f64>, D, D>,
-    z0: SVector<Complex<f64>, D>,
-    bounds: (usize, usize),
-    upper_left: Complex<f64>,
-    lower_right: Complex<f64>,
-) {
-    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
-
-    for row in 0..bounds.1 {
-        for column in 0..bounds.0 {
-            let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit_escape(point, mat, z0, MAX_ITERATIONS) {
-                (None, _) => Rgb([0, 0, 0]),
-                (Some(n), z) => get_smooth_orbit_color(n, z.norm(), MAX_ITERATIONS),
-            };
-
-            let index = row * bounds.0 + 3 * column;
-            pixels[index + 0] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
-        }
-    }
-}
-
-fn render_period<const D: usize>(
-    pixels: &mut [u8],
-    mat: SMatrix<Complex<f64>, D, D>,
-    z0: SVector<Complex<f64>, D>,
-    bounds: (usize, usize),
-    upper_left: Complex<f64>,
-    lower_right: Complex<f64>,
-) {
-    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
-
-    for row in 0..bounds.1 {
-        for column in 0..bounds.0 {
-            let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit_period(point, mat, z0, MAX_ITERATIONS) {
-                None => Rgb([255, 255, 255]),
-                Some(period) => get_period_color(period, MAX_PERIODS, 3),
-            };
-
-            let index = row * bounds.0 + 3 * column;
-            pixels[index + 0] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
-        }
-    }
-}
-
-// }}}
 
 // {{{ Command-line parser
 
@@ -189,6 +114,8 @@ fn main() {
     //     c64!(0.0), c64!(1.0);
     // ];
 
+    let brot = Netbrot::new(mat, z0, MAX_ITERATIONS);
+
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
     let now = Instant::now();
@@ -203,22 +130,12 @@ fn main() {
                 pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
 
             match color_type {
-                ColorType::Orbit => render_orbit(
-                    band,
-                    mat,
-                    z0,
-                    band_bounds,
-                    band_upper_left,
-                    band_lower_right,
-                ),
-                ColorType::Period => render_period(
-                    band,
-                    mat,
-                    z0,
-                    band_bounds,
-                    band_upper_left,
-                    band_lower_right,
-                ),
+                ColorType::Orbit => {
+                    render_orbit(band, brot, band_bounds, band_upper_left, band_lower_right)
+                }
+                ColorType::Period => {
+                    render_period(band, brot, band_bounds, band_upper_left, band_lower_right)
+                }
             }
         });
     }

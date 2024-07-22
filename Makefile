@@ -28,3 +28,9 @@ reuse:			## Check REUSE license compliance
 	$(PYTHON) -m reuse lint
 	@echo -e "\e[1;32mREUSE compliant!\e[0m"
 .PHONY: reuse
+
+build:			## Build the project in debug mode
+	cargo build --verbose
+
+release:		## Build project in release mode
+	cargo build --release

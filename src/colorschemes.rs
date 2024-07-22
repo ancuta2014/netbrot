@@ -5,7 +5,7 @@ use colors_transform::{Color, Hsl};
 use image::Rgb;
 
 // https://graphicdesign.stackexchange.com/a/158793
-const COLOR_PALLETTE_V1: [Rgb<u8>; 32] = [
+const COLOR_PALETTE_V1: [Rgb<u8>; 32] = [
     Rgb([173, 216, 230]),
     Rgb([0, 191, 255]),
     Rgb([30, 144, 255]),
@@ -41,7 +41,7 @@ const COLOR_PALLETTE_V1: [Rgb<u8>; 32] = [
 ];
 
 // https://lospec.com/palette-list/endesga-32
-const COLOR_PALLETTE_V2: [Rgb<u8>; 32] = [
+const COLOR_PALETTE_V2: [Rgb<u8>; 32] = [
     Rgb([190, 74, 47]),
     Rgb([215, 118, 67]),
     Rgb([234, 212, 170]),
@@ -76,7 +76,7 @@ const COLOR_PALLETTE_V2: [Rgb<u8>; 32] = [
     Rgb([255, 255, 255]),
 ];
 
-const COLOR_PALLETTE_V3: [Rgb<u8>; 32] = [
+const COLOR_PALETTE_V3: [Rgb<u8>; 32] = [
     Rgb([75, 0, 85]),
     Rgb([123, 0, 140]),
     Rgb([134, 0, 151]),
@@ -141,9 +141,9 @@ pub fn get_smooth_orbit_color(c: usize, z: f64, limit: usize) -> Rgb<u8> {
 pub fn get_period_color(p: usize, limit: usize, version: u8) -> Rgb<u8> {
     if 1 <= p && p < limit - 1 {
         match version {
-            1 => COLOR_PALLETTE_V1[p - 1],
-            2 => COLOR_PALLETTE_V2[p - 1],
-            3 => COLOR_PALLETTE_V3[p - 1],
+            1 => COLOR_PALETTE_V1[p - 1],
+            2 => COLOR_PALETTE_V2[p - 1],
+            3 => COLOR_PALETTE_V3[p - 1],
             _ => panic!("Invalid color palette version"),
         }
     } else {
