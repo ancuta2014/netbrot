@@ -14,7 +14,7 @@ mod colorschemes;
 mod gallery;
 mod netbrot;
 
-use netbrot::{pixel_to_point, render_orbit, render_period, Netbrot};
+use netbrot::{pixel_to_point, render_fixed_points, render_orbit, render_period, Netbrot};
 
 use std::time::Instant;
 
@@ -48,6 +48,8 @@ enum ColorType {
     Orbit,
     /// Plot periodicity for orbits that do not escape.
     Period,
+    /// Fixed points
+    Fixed,
 }
 
 // }}}
@@ -96,6 +98,9 @@ fn main() {
                 }
                 ColorType::Period => {
                     render_period(band, brot, band_bounds, band_upper_left, band_lower_right)
+                }
+                ColorType::Fixed => {
+                    render_fixed_points(band, brot, band_bounds, band_upper_left, band_lower_right)
                 }
             }
         });

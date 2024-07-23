@@ -66,6 +66,16 @@ where
             escape_radius_squared: self.escape_radius_squared,
         }
     }
+
+    pub fn from(self, z0: Complex64) -> Self {
+        Netbrot {
+            mat: self.mat,
+            z0: OVector::from_vec(vec![z0; self.mat.nrows()]),
+            c: self.c,
+            maxit: self.maxit,
+            escape_radius_squared: self.escape_radius_squared,
+        }
+    }
 }
 
 #[derive(Clone, Debug)]
@@ -281,12 +291,48 @@ pub fn render_period<D: DimName>(
 
     for row in 0..bounds.1 {
         for column in 0..bounds.0 {
-            let point = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit_period(brot.at(point)) {
+            let c = pixel_to_point(bounds, (column, row), upper_left, lower_right);
+            let color = match netbrot_orbit_period(brot.at(c)) {
                 None => Rgb([255, 255, 255]),
                 Some(period) => get_period_color(period, MAX_PERIODS, 3),
             };
 
+            let index = row * bounds.0 + 3 * column;
+            pixels[index + 0] = color[0];
+            pixels[index + 1] = color[1];
+            pixels[index + 2] = color[2];
+        }
+    }
+}
+
+pub fn render_fixed_points<D: DimName>(
+    pixels: &mut [u8],
+    brot: Netbrot<D>,
+    bounds: (usize, usize),
+    upper_left: Complex64,
+    lower_right: Complex64,
+) where
+    D: DimMin<D, Output = D>,
+    Owned<Complex64, D>: Copy,
+    Owned<Complex64, D, D>: Copy,
+    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
+{
+    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
+    let maxit = brot.maxit;
+
+    for row in 0..bounds.1 {
+        for column in 0..bounds.0 {
+            let z0 = pixel_to_point(bounds, (column, row), upper_left, lower_right);
+            let color = match netbrot_orbit_escape(brot.from(z0)) {
+                EscapeResult {
+                    iteration: None,
+                    z: _,
+                } => Rgb([0, 0, 0]),
+                EscapeResult {
+                    iteration: Some(n),
+                    z,
+                } => get_smooth_orbit_color(n, z.norm(), maxit),
+            };
             let index = row * bounds.0 + 3 * column;
             pixels[index + 0] = color[0];
             pixels[index + 1] = color[1];
