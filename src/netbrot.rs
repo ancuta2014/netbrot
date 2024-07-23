@@ -1,9 +1,9 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-use num::Complex;
-
 use image::Rgb;
+use num::complex::{c64, Complex64};
+
 use nalgebra::allocator::Allocator;
 use nalgebra::storage::Owned;
 use nalgebra::{DefaultAllocator, DimMin, DimName};
@@ -16,26 +16,23 @@ const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
 
 // {{{ structs
 
-#[allow(non_camel_case_types)]
-type c64 = Complex<f64>;
-
-type Matrix<D> = OMatrix<c64, D, D>;
-type Vector<D> = OVector<c64, D>;
+type Matrix<D> = OMatrix<Complex64, D, D>;
+type Vector<D> = OVector<Complex64, D>;
 
 #[derive(Clone, Copy, Debug)]
 pub struct Netbrot<D: DimName>
 where
     D: DimMin<D, Output = D>,
-    Owned<c64, D>: Copy,
-    Owned<c64, D, D>: Copy,
-    DefaultAllocator: Allocator<c64, D, D> + Allocator<c64, D>,
+    Owned<Complex64, D>: Copy,
+    Owned<Complex64, D, D>: Copy,
+    DefaultAllocator: Allocator<Complex64, D, D> + Allocator<Complex64, D>,
 {
     /// Matrix used in the iteration
     pub mat: Matrix<D>,
     /// Starting point for the iteration.
     pub z0: Vector<D>,
     /// Constant offset for the iteration.
-    pub c: c64,
+    pub c: Complex64,
 
     /// Maximum number of iterations before the point is considered in the set.
     pub maxit: usize,
@@ -46,21 +43,21 @@ where
 impl<D: DimName> Netbrot<D>
 where
     D: DimMin<D, Output = D>,
-    Owned<c64, D>: Copy,
-    Owned<c64, D, D>: Copy,
-    DefaultAllocator: Allocator<c64, D, D> + Allocator<c64, D>,
+    Owned<Complex64, D>: Copy,
+    Owned<Complex64, D, D>: Copy,
+    DefaultAllocator: Allocator<Complex64, D, D> + Allocator<Complex64, D>,
 {
-    pub fn new(mat: Matrix<D>, z0: Vector<D>, maxit: usize) -> Self {
+    pub fn new(mat: Matrix<D>, maxit: usize) -> Self {
         Netbrot {
             mat: mat.clone(),
-            z0: z0,
-            c: Complex { re: 0.0, im: 0.0 },
+            z0: OVector::from_vec(vec![c64(0.0, 0.0); mat.nrows()]),
+            c: c64(0.0, 0.0),
             maxit: maxit,
             escape_radius_squared: escape_radius_squared(mat),
         }
     }
 
-    pub fn at(self, c: c64) -> Self {
+    pub fn at(self, c: Complex64) -> Self {
         Netbrot {
             mat: self.mat,
             z0: self.z0,
@@ -74,7 +71,7 @@ where
 #[derive(Clone, Debug)]
 pub struct EscapeResult<D: DimName>
 where
-    DefaultAllocator: Allocator<c64, D>,
+    DefaultAllocator: Allocator<Complex64, D>,
 {
     /// Iteration at which the point escaped or None otherwise.
     pub iteration: Option<usize>,
@@ -97,7 +94,7 @@ type PeriodResult = Option<usize>;
 pub fn escape_radius_squared<D: DimName>(mat: Matrix<D>) -> f64
 where
     D: DimMin<D, Output = D>,
-    DefaultAllocator: Allocator<c64, D> + Allocator<c64, D, D>,
+    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
 {
     // NOTE: singular values are sorted descendingly, so we can just take the last
     // one here without worrying about it too much :D
@@ -108,22 +105,26 @@ where
     fac_sqr / sigma_min_sqr
 }
 
+/// Translate pixel coordinates to physical point coordinates.
+///
+/// *bounds*: width and height of the image.
+/// *upper_left*, *lower_left*: bounding box of the domain.
 pub fn pixel_to_point(
     bounds: (usize, usize),
     pixel: (usize, usize),
-    upper_left: c64,
-    lower_right: c64,
-) -> c64 {
+    upper_left: Complex64,
+    lower_right: Complex64,
+) -> Complex64 {
     let (width, height) = (
         lower_right.re - upper_left.re,
         upper_left.im - lower_right.im,
     );
-    Complex {
+    c64(
         // Why subtraction here? pixel.1 increases as we go down,
-        re: upper_left.re + (pixel.0 as f64) * width / (bounds.0 as f64),
+        upper_left.re + (pixel.0 as f64) * width / (bounds.0 as f64),
         // but the imaginary component increases as we go up.
-        im: upper_left.im - (pixel.1 as f64) * height / (bounds.1 as f64),
-    }
+        upper_left.im - (pixel.1 as f64) * height / (bounds.1 as f64),
+    )
 }
 
 // }}}
@@ -141,9 +142,9 @@ pub fn pixel_to_point(
 pub fn netbrot_orbit_escape<D: DimName>(brot: Netbrot<D>) -> EscapeResult<D>
 where
     D: DimMin<D, Output = D>,
-    Owned<c64, D>: Copy,
-    Owned<c64, D, D>: Copy,
-    DefaultAllocator: Allocator<c64, D> + Allocator<c64, D, D>,
+    Owned<Complex64, D>: Copy,
+    Owned<Complex64, D, D>: Copy,
+    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
 {
     let mut z = brot.z0.clone();
     let mat = brot.mat.clone();
@@ -182,9 +183,9 @@ where
 pub fn netbrot_orbit_period<D: DimName>(brot: Netbrot<D>) -> PeriodResult
 where
     D: DimMin<D, Output = D>,
-    Owned<c64, D>: Copy,
-    Owned<c64, D, D>: Copy,
-    DefaultAllocator: Allocator<c64, D> + Allocator<c64, D, D>,
+    Owned<Complex64, D>: Copy,
+    Owned<Complex64, D, D>: Copy,
+    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
 {
     match netbrot_orbit_escape(brot) {
         EscapeResult { iteration: None, z } => {
@@ -231,13 +232,13 @@ pub fn render_orbit<D: DimName>(
     pixels: &mut [u8],
     brot: Netbrot<D>,
     bounds: (usize, usize),
-    upper_left: c64,
-    lower_right: c64,
+    upper_left: Complex64,
+    lower_right: Complex64,
 ) where
     D: DimMin<D, Output = D>,
-    Owned<c64, D>: Copy,
-    Owned<c64, D, D>: Copy,
-    DefaultAllocator: Allocator<c64, D> + Allocator<c64, D, D>,
+    Owned<Complex64, D>: Copy,
+    Owned<Complex64, D, D>: Copy,
+    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
 {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
     let maxit = brot.maxit;
@@ -268,13 +269,13 @@ pub fn render_period<D: DimName>(
     pixels: &mut [u8],
     brot: Netbrot<D>,
     bounds: (usize, usize),
-    upper_left: c64,
-    lower_right: c64,
+    upper_left: Complex64,
+    lower_right: Complex64,
 ) where
     D: DimMin<D, Output = D>,
-    Owned<c64, D>: Copy,
-    Owned<c64, D, D>: Copy,
-    DefaultAllocator: Allocator<c64, D> + Allocator<c64, D, D>,
+    Owned<Complex64, D>: Copy,
+    Owned<Complex64, D, D>: Copy,
+    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
 {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
 

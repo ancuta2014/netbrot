@@ -11,6 +11,7 @@
 #![allow(elided_lifetimes_in_paths)]
 
 mod colorschemes;
+mod gallery;
 mod netbrot;
 
 use netbrot::{pixel_to_point, render_orbit, render_period, Netbrot};
@@ -19,17 +20,9 @@ use std::time::Instant;
 
 use clap::{Parser, ValueEnum, ValueHint};
 use image::RgbImage;
-use nalgebra::{matrix, vector};
-use num::Complex;
 use rayon::prelude::*;
 
 const MAX_ITERATIONS: usize = 256;
-
-macro_rules! c64 {
-    ($re: literal) => {
-        Complex { re: $re, im: 0.0 }
-    };
-}
 
 // {{{ Command-line parser
 
@@ -66,26 +59,10 @@ fn main() {
     let filename = args.filename;
     println!("Coloring: {:?}", color_type);
 
-    // Full 2x2 brot interval
-    // let upper_left = Complex { re: -0.9, im: 0.6 };
-    // let lower_right = Complex { re: 0.4, im: -0.6 };
+    let exhibit = gallery::EXHIBIT_3_3X3_FULL;
+    let upper_left = exhibit.upper_left;
+    let lower_right = exhibit.lower_right;
 
-    // Full 3x3 brot interval
-    let upper_left = Complex {
-        re: -1.25,
-        im: 0.75,
-    };
-    let lower_right = Complex { re: 0.5, im: -0.75 };
-
-    // Baby 3x3 brot interval
-    // let upper_left = Complex {
-    //     re: -1.025,
-    //     im: 0.025,
-    // };
-    // let lower_right = Complex {
-    //     re: -0.975,
-    //     im: -0.025,
-    // };
     println!(
         "Bounding box: Top left {} Bottom right {}",
         upper_left, lower_right
@@ -98,23 +75,7 @@ fn main() {
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
-    let z0 = vector![c64!(0.0), c64!(0.0), c64!(0.0)];
-    let mat = matrix![
-        c64!(1.0), c64!(0.0), c64!(0.0);
-        c64!(-1.0), c64!(1.0), c64!(0.0);
-        c64!(1.0), c64!(1.0), c64!(-1.0);
-    ];
-    // let z0 = vector![c64!(0.0), c64!(0.0)];
-    // let mat = matrix![
-    //     c64!(1.0), c64!(0.8);
-    //     c64!(1.0), c64!(-0.5);
-    // ];
-    // let mat = matrix![
-    //     c64!(1.0), c64!(1.0);
-    //     c64!(0.0), c64!(1.0);
-    // ];
-
-    let brot = Netbrot::new(mat, z0, MAX_ITERATIONS);
+    let brot = Netbrot::new(exhibit.mat, MAX_ITERATIONS);
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
