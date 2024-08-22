@@ -36,7 +36,7 @@ reuse:			## Check REUSE license compliance
 .PHONY: reuse
 
 ruff:			## Run ruff checks over the source code
-	ruff check src tests scripts
+	ruff check scripts
 	@echo -e "\e[1;32mruff clean!\e[0m"
 .PHONY: ruff
 

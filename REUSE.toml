@@ -7,7 +7,7 @@ SPDX-PackageSupplier = "Alexandru Fikl <alexfikl@gmail.com>"
 SPDX-PackageDownloadLocation = "https://github.com/alexfikl/netbrot"
 
 [[annotations]]
-path = [".gitignore", "Cargo.toml", "Cargo.lock", "Makefile", "README.md"]
+path = [".gitignore", "Cargo.toml", "Cargo.lock", "Makefile", "README.md", "pyproject.toml"]
 precedence = "aggregate"
 SPDX-FileCopyrightText = "2024 Alexandru Fikl <alexfikl@gmail.com>"
 SPDX-License-Identifier = "CC0-1.0"
