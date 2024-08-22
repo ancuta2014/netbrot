@@ -1,6 +1,9 @@
 /target
-*.png
+
 data/*.mat
+data/*.npz
 
 .ruff_cache
 .mypy_cache
+
+*.png
