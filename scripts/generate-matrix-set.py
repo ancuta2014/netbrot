@@ -36,7 +36,7 @@ pub struct Exhibit<const D: usize> {
     /// Matrix used in the iteration.
     pub mat: SMatrix<Complex64, D, D>,
     /// Escape radius for this matrix.
-    pub escape_radius: float64,
+    pub escape_radius: f64,
     /// Bounding box for the points.
     pub upper_left: Complex64,
     pub lower_right: Complex64,

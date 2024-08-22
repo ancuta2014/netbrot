@@ -77,7 +77,7 @@ fn main() {
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
-    let brot = Netbrot::new(exhibit.mat, MAX_ITERATIONS);
+    let brot = Netbrot::new(exhibit.mat, MAX_ITERATIONS, exhibit.escape_radius);
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");

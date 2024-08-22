@@ -47,13 +47,13 @@ where
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D, D> + Allocator<Complex64, D>,
 {
-    pub fn new(mat: Matrix<D>, maxit: usize) -> Self {
+    pub fn new(mat: Matrix<D>, maxit: usize, escape_radius: f64) -> Self {
         Netbrot {
             mat: mat.clone(),
             z0: OVector::from_vec(vec![c64(0.0, 0.0); mat.nrows()]),
             c: c64(0.0, 0.0),
             maxit: maxit,
-            escape_radius_squared: escape_radius_squared(mat),
+            escape_radius_squared: escape_radius * escape_radius,
         }
     }
 
@@ -101,6 +101,7 @@ type PeriodResult = Option<usize>;
 /// $$
 ///     R = \frac{2 \sqrt{d}}{\sigma_{\text{min}}(A)^2}.
 /// $$
+#[allow(dead_code)]
 pub fn escape_radius_squared<D: DimName>(mat: Matrix<D>) -> f64
 where
     D: DimMin<D, Output = D>,
