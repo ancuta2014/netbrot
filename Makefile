@@ -8,7 +8,7 @@ help: 			## Show this help
 	@echo ""
 .PHONY: help
 
-format: rustfmt					## Run all formatting scripts
+format: rustfmt rufffmt			## Run all formatting scripts
 .PHONY: format
 
 rustfmt:						## Run rustfmt
@@ -16,11 +16,17 @@ rustfmt:						## Run rustfmt
 	@echo -e "\e[1;32mrustfmt clean!\e[0m"
 .PHONY: rustfmt
 
-lint: typos reuse 				## Run linting checks
+rufffmt:						## Run ruff format
+	ruff format scripts
+	ruff check --fix --select=I scripts
+	ruff check --fix --select=RUF022 scripts
+	@echo -e "\e[1;32mruff format clean!\e[0m"
+
+lint: typos reuse ruff			## Run linting checks
 .PHONY: lint
 
 typos:			## Run typos over the source code and documentation
-	@typos
+	typos --sort
 	@echo -e "\e[1;32mtypos clean!\e[0m"
 .PHONY: typos
 
@@ -29,8 +35,15 @@ reuse:			## Check REUSE license compliance
 	@echo -e "\e[1;32mREUSE compliant!\e[0m"
 .PHONY: reuse
 
+ruff:			## Run ruff checks over the source code
+	ruff check src tests scripts
+	@echo -e "\e[1;32mruff clean!\e[0m"
+.PHONY: ruff
+
 build:			## Build the project in debug mode
 	cargo build --verbose
+.PHONY: build
 
 release:		## Build project in release mode
 	cargo build --release
+.PHONY: release
