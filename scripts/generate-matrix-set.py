@@ -35,6 +35,8 @@ macro_rules! c64 {
 pub struct Exhibit<const D: usize> {
     /// Matrix used in the iteration.
     pub mat: SMatrix<Complex64, D, D>,
+    /// Escape radius for this matrix.
+    pub escape_radius: float64,
     /// Bounding box for the points.
     pub upper_left: Complex64,
     pub lower_right: Complex64,
@@ -46,6 +48,7 @@ pub const ((* ex.identifier *)): Exhibit<((* ex.size *))> = Exhibit::<((* ex.siz
     mat: matrix![
         ((* ex.stringified_mat | indent(width=8) *))
     ],
+    escape_radius: ((* ex.escape_radius *)),
     upper_left: Complex64 {
         re: ((* ex.upper_left.real *)),
         im: ((* ex.upper_left.imag *)),
@@ -84,6 +87,13 @@ class Exhibit:
         return self.mat.shape[0]
 
     @property
+    def escape_radius(self) -> float:
+        n = self.size
+        sigma = np.linalg.svdvals(self.mat)
+
+        return 2.0 * np.sqrt(n) / np.min(sigma) ** 2
+
+    @property
     def stringified_mat(self) -> str:
         n = self.size
         return "\n".join(
@@ -105,7 +115,7 @@ DEFAULT_EXHIBITS = [
         name="EXHIBIT_2_2X2_FULL",
         mat=np.array([[1.0, 1.0], [0.0, 1.0]]),
         upper_left=complex(-0.9, 0.6),
-        lower_right=complex(0.4, 0.6),
+        lower_right=complex(0.4, -0.6),
     ),
     Exhibit(
         name="EXHIBIT_3_3X3_FULL",
@@ -159,17 +169,17 @@ def main(
         for i in range(structural_connection_matrices.shape[0]):
             mat = structural_connection_matrices[i]
             n = mat.shape[0]
-            exhibits.append(
-                Exhibit(
-                    name=f"EXHIBIT_{i}_{n}x{n}_STRCTURURAL",
-                    mat=mat,
-                    upper_left=complex(-3.75, 2.5),
-                    lower_right=complex(1.25, -2.5),
-                )
+            ex = Exhibit(
+                name=f"EXHIBIT_{i}_{n}x{n}_STRUCTURAL",
+                mat=mat,
+                upper_left=complex(-3.75, 2.5),
+                lower_right=complex(1.25, -2.5),
             )
 
+            exhibits.append(ex)
+
     env = make_jinja_env()
-    result = env.from_string(TEMPLATE).render(exhibits=exhibits)
+    result = env.from_string(TEMPLATE).render(exhibits=exhibits[:5])
 
     if outfile:
         with open(outfile, "w", encoding="utf-8") as outf:
