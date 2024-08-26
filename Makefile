@@ -12,7 +12,7 @@ format: rustfmt rufffmt			## Run all formatting scripts
 .PHONY: format
 
 rustfmt:						## Run rustfmt
-	rustfmt src/*.rs
+	cargo fmt -- src/*.rs
 	@echo -e "\e[1;32mrustfmt clean!\e[0m"
 .PHONY: rustfmt
 
@@ -22,7 +22,7 @@ rufffmt:						## Run ruff format
 	ruff check --fix --select=RUF022 scripts
 	@echo -e "\e[1;32mruff format clean!\e[0m"
 
-lint: typos reuse ruff			## Run linting checks
+lint: typos reuse ruff clippy	## Run linting checks
 .PHONY: lint
 
 typos:			## Run typos over the source code and documentation
@@ -39,6 +39,10 @@ ruff:			## Run ruff checks over the source code
 	ruff check scripts
 	@echo -e "\e[1;32mruff clean!\e[0m"
 .PHONY: ruff
+
+clippy:			## Run clippy lint checks
+	cargo clippy
+	@echo -e "\e[1;32mclippy clean!\e[0m"
 
 build:			## Build the project in debug mode
 	cargo build --verbose

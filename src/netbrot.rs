@@ -20,9 +20,9 @@ type Matrix<D> = OMatrix<Complex64, D, D>;
 type Vector<D> = OVector<Complex64, D>;
 
 #[derive(Clone, Copy, Debug)]
-pub struct Netbrot<D: DimName>
+pub struct Netbrot<D>
 where
-    D: DimMin<D, Output = D>,
+    D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D, D> + Allocator<Complex64, D>,
@@ -40,19 +40,19 @@ where
     pub escape_radius_squared: f64,
 }
 
-impl<D: DimName> Netbrot<D>
+impl<D> Netbrot<D>
 where
-    D: DimMin<D, Output = D>,
+    D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D, D> + Allocator<Complex64, D>,
 {
     pub fn new(mat: Matrix<D>, maxit: usize, escape_radius: f64) -> Self {
         Netbrot {
-            mat: mat.clone(),
+            mat,
             z0: OVector::from_vec(vec![c64(0.0, 0.0); mat.nrows()]),
             c: c64(0.0, 0.0),
-            maxit: maxit,
+            maxit,
             escape_radius_squared: escape_radius * escape_radius,
         }
     }
@@ -61,7 +61,7 @@ where
         Netbrot {
             mat: self.mat,
             z0: self.z0,
-            c: c,
+            c,
             maxit: self.maxit,
             escape_radius_squared: self.escape_radius_squared,
         }
@@ -102,7 +102,7 @@ type PeriodResult = Option<usize>;
 ///     R = \frac{2 \sqrt{d}}{\sigma_{\text{min}}(A)^2}.
 /// $$
 #[allow(dead_code)]
-pub fn escape_radius_squared<D: DimName>(mat: Matrix<D>) -> f64
+pub fn escape_radius_squared<D>(mat: Matrix<D>) -> f64
 where
     D: DimMin<D, Output = D>,
     DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
@@ -150,15 +150,16 @@ pub fn pixel_to_point(
 ///
 /// where $A$ is $d \times d$ matrix, $z$ is also a $d$ dimensional vector and
 /// $c$ is a complex constant.
-pub fn netbrot_orbit_escape<D: DimName>(brot: Netbrot<D>) -> EscapeResult<D>
+pub fn netbrot_orbit_escape<D>(brot: Netbrot<D>) -> EscapeResult<D>
 where
+    D: DimName,
     D: DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
 {
-    let mut z = brot.z0.clone();
-    let mat = brot.mat.clone();
+    let mut z = brot.z0;
+    let mat = brot.mat;
     let c = brot.c;
     let maxit = brot.maxit;
     let escape_radius_squared = brot.escape_radius_squared;
@@ -169,7 +170,7 @@ where
         if z.norm_squared() > escape_radius_squared {
             return EscapeResult {
                 iteration: Some(i),
-                z: z,
+                z,
             };
         }
 
@@ -177,10 +178,7 @@ where
         matz = mat * z;
     }
 
-    EscapeResult {
-        iteration: None,
-        z: z,
-    }
+    EscapeResult { iteration: None, z }
 }
 
 // }}}
@@ -191,9 +189,9 @@ where
 ///
 /// The period is computed by looking at a long time iteration that does not
 /// escape and checking the tolerance.
-pub fn netbrot_orbit_period<D: DimName>(brot: Netbrot<D>) -> PeriodResult
+pub fn netbrot_orbit_period<D>(brot: Netbrot<D>) -> PeriodResult
 where
-    D: DimMin<D, Output = D>,
+    D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
@@ -205,10 +203,12 @@ where
             let mat = brot.mat;
             let c = brot.c;
             let mut matz = mat * z;
-            let mut z_period = vec![z.scale(0.0); PERIOD_WINDOW];
+            let mut z_period = [z.scale(0.0); PERIOD_WINDOW];
 
             // Evaluate some more points
             z_period[0] = z;
+
+            #[allow(clippy::needless_range_loop)]
             for i in 1..PERIOD_WINDOW {
                 z_period[i] = matz.component_mul(&matz).add_scalar(c);
                 matz = mat * z_period[i];
@@ -239,14 +239,14 @@ where
 
 // {{{ rendering
 
-pub fn render_orbit<D: DimName>(
+pub fn render_orbit<D>(
     pixels: &mut [u8],
     brot: Netbrot<D>,
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
 ) where
-    D: DimMin<D, Output = D>,
+    D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
@@ -269,21 +269,21 @@ pub fn render_orbit<D: DimName>(
             };
 
             let index = row * bounds.0 + 3 * column;
-            pixels[index + 0] = color[0];
+            pixels[index] = color[0];
             pixels[index + 1] = color[1];
             pixels[index + 2] = color[2];
         }
     }
 }
 
-pub fn render_period<D: DimName>(
+pub fn render_period<D>(
     pixels: &mut [u8],
     brot: Netbrot<D>,
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
 ) where
-    D: DimMin<D, Output = D>,
+    D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
@@ -299,21 +299,21 @@ pub fn render_period<D: DimName>(
             };
 
             let index = row * bounds.0 + 3 * column;
-            pixels[index + 0] = color[0];
+            pixels[index] = color[0];
             pixels[index + 1] = color[1];
             pixels[index + 2] = color[2];
         }
     }
 }
 
-pub fn render_fixed_points<D: DimName>(
+pub fn render_fixed_points<D>(
     pixels: &mut [u8],
     brot: Netbrot<D>,
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
 ) where
-    D: DimMin<D, Output = D>,
+    D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
     DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
@@ -335,7 +335,7 @@ pub fn render_fixed_points<D: DimName>(
                 } => get_smooth_orbit_color(n, z.norm(), maxit),
             };
             let index = row * bounds.0 + 3 * column;
-            pixels[index + 0] = color[0];
+            pixels[index] = color[0];
             pixels[index + 1] = color[1];
             pixels[index + 2] = color[2];
         }
