@@ -144,6 +144,40 @@ DEFAULT_EXHIBITS = [
 ]
 
 
+def parse_ranges(ranges: str | None) -> list[slice]:
+    if ranges is None:
+        return []
+
+    slices: set[int] = set()
+    for entry in ranges.split(","):
+        parts = [part.strip() for part in entry.split(":")]
+        nparts = len(parts)
+
+        if nparts == 0:
+            continue
+        elif nparts == 1:
+            try:
+                start = int(parts[0])
+            except ValueError:
+                log.error("Failed to parse range into integer: '%s'", entry)
+                continue
+
+            end = start + 1
+        elif nparts == 2:
+            try:
+                start = int(parts[0]) if parts[0] else None
+                end = int(parts[1]) if parts[1] else None
+            except ValueError:
+                log.error("Failed to parse range into integer: '%s'", entry)
+                continue
+        else:
+            raise ValueError(f"Invalid range format: '{entry.strip()}'")
+
+        slices.add(slice(start, end))
+
+    return list(slices)
+
+
 def make_jinja_env() -> jinja2.Environment:
     env = jinja2.Environment(
         block_start_string="(((",
@@ -162,6 +196,7 @@ def main(
     infile: pathlib.Path | None = None,
     outfile: pathlib.Path | None = None,
     *,
+    slices: list[slice] | None = None,
     max_escape_radius: float = np.inf,
     overwrite: bool = False,
 ) -> int:
@@ -178,8 +213,16 @@ def main(
     if infile:
         data = np.load(infile)
         structural_connection_matrices = data["structural_connection_matrices"]
+        nmatrices = structural_connection_matrices.shape[0]
 
-        for i in range(structural_connection_matrices.shape[0]):
+        if not slices:
+            slices = [slice(nmatrices)]
+
+        indices = set()
+        for s in slices:
+            indices.update(range(*s.indices(nmatrices)))
+
+        for i in sorted(indices):
             mat = structural_connection_matrices[i]
             n = mat.shape[0]
             ex = Exhibit(
@@ -193,7 +236,7 @@ def main(
             exhibits.append(ex)
 
     env = make_jinja_env()
-    result = env.from_string(TEMPLATE).render(exhibits=exhibits[:5])
+    result = env.from_string(TEMPLATE).render(exhibits=exhibits)
 
     if outfile:
         with open(outfile, "w", encoding="utf-8") as outf:
@@ -217,15 +260,20 @@ if __name__ == "__main__":
         help="Desired maximum escape radius for the infile data",
     )
     parser.add_argument(
+        "-r",
+        "--ranges",
+        help="A range of elements from the INFILE to load (format '1,2,2:6,:6')",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
-        help="overwrite existing files",
+        help="Overwrite existing files",
     )
     parser.add_argument(
         "-q",
         "--quiet",
         action="store_true",
-        help="only show error messages",
+        help="Only show error messages",
     )
     args = parser.parse_args()
 
@@ -236,6 +284,7 @@ if __name__ == "__main__":
         main(
             args.infile,
             args.outfile,
+            slices=parse_ranges(args.ranges),
             max_escape_radius=args.max_escape_radius,
             overwrite=args.overwrite,
         )
