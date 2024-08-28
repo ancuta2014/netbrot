@@ -74,9 +74,15 @@ class Exhibit:
     lower_right: complex
     """Lower right corner of the rendering bounding box."""
 
+    max_escape_radius: float
+    """Maximum desired escape radius. This is meant as a hack around matrices
+    where a good estimate is not available.
+    """
+
     def __post_init__(self) -> None:
         assert self.mat.ndim == 2
         assert self.mat.shape[0] == self.mat.shape[1]
+        assert self.max_escape_radius > 0.0
 
     @property
     def identifier(self) -> str:
@@ -91,7 +97,9 @@ class Exhibit:
         n = self.size
         sigma = np.linalg.svdvals(self.mat)
 
-        return 2.0 * np.sqrt(n) / np.min(sigma) ** 2
+        escape_radius = 2.0 * np.sqrt(n) / np.min(sigma) ** 2
+
+        return min(self.max_escape_radius, escape_radius)
 
     @property
     def stringified_mat(self) -> str:
@@ -110,24 +118,28 @@ DEFAULT_EXHIBITS = [
         mat=np.array([[1.0, 0.8], [1.0, -0.5]]),
         upper_left=complex(-0.9, 0.6),
         lower_right=complex(0.4, -0.6),
+        max_escape_radius=np.inf,
     ),
     Exhibit(
         name="EXHIBIT_2_2X2_FULL",
         mat=np.array([[1.0, 1.0], [0.0, 1.0]]),
         upper_left=complex(-0.9, 0.6),
         lower_right=complex(0.4, -0.6),
+        max_escape_radius=np.inf,
     ),
     Exhibit(
         name="EXHIBIT_3_3X3_FULL",
         mat=np.array([[1.0, 0.0, 0.0], [-1.0, 1.0, 0.0], [1.0, 1.0, -1.0]]),
         upper_left=complex(-1.25, 0.75),
         lower_right=complex(0.5, -0.75),
+        max_escape_radius=np.inf,
     ),
     Exhibit(
         name="EXHIBIT_3_3X3_BABY",
         mat=np.array([[1.0, 0.0, 0.0], [-1.0, 1.0, 0.0], [1.0, 1.0, -1.0]]),
         upper_left=complex(-1.025, 0.025),
         lower_right=complex(-0.975, -0.025),
+        max_escape_radius=np.inf,
     ),
 ]
 
@@ -150,6 +162,7 @@ def main(
     infile: pathlib.Path | None = None,
     outfile: pathlib.Path | None = None,
     *,
+    max_escape_radius: float = np.inf,
     overwrite: bool = False,
 ) -> int:
     if infile is not None and not infile.exists():
@@ -174,6 +187,7 @@ def main(
                 mat=mat,
                 upper_left=complex(-3.75, 2.5),
                 lower_right=complex(1.25, -2.5),
+                max_escape_radius=max_escape_radius,
             )
 
             exhibits.append(ex)
@@ -197,6 +211,12 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--infile", type=pathlib.Path, default=None)
     parser.add_argument("-o", "--outfile", type=pathlib.Path, default=None)
     parser.add_argument(
+        "--max-escape-radius",
+        type=float,
+        default=np.inf,
+        help="Desired maximum escape radius for the infile data",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="overwrite existing files",
@@ -216,6 +236,7 @@ if __name__ == "__main__":
         main(
             args.infile,
             args.outfile,
+            max_escape_radius=args.max_escape_radius,
             overwrite=args.overwrite,
         )
     )
