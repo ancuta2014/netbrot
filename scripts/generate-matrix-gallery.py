@@ -216,6 +216,8 @@ def main(
     if infile:
         data = np.load(infile)
         structural_connection_matrices = data["structural_connection_matrices"]
+        upper_lefts = data["upper_lefts"]
+        lower_rights = data["lower_rights"]
         nmatrices = structural_connection_matrices.shape[0]
 
         if not slices:
@@ -231,8 +233,8 @@ def main(
             ex = Exhibit(
                 name=f"EXHIBIT_{i:0{width}}_{suffix}".upper(),
                 mat=mat,
-                upper_left=complex(-3.75, 2.5),
-                lower_right=complex(1.25, -2.5),
+                upper_left=complex(upper_lefts[i]),
+                lower_right=complex(lower_rights[i]),
                 max_escape_radius=max_escape_radius,
             )
 

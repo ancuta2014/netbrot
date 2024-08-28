@@ -35,9 +35,16 @@ def main(
 
     result = loadmat(filename)
     matrices = result["Structural_Conn"]
+    upper_lefts = np.full(matrices.shape[0], complex(-3.75, 2.5))
+    lower_rights = np.full(matrices.shape[0], complex(1.25, -2.5))
     log.info("Read a matrix of size '%s'.", matrices.shape)
 
-    np.savez(outfile, structural_connection_matrices=matrices)
+    np.savez(
+        outfile,
+        structural_connection_matrices=matrices,
+        upper_lefts=upper_lefts,
+        lower_rights=lower_rights,
+    )
     log.info("Saved results in '%s'.", outfile)
 
     return 0
