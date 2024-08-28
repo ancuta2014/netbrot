@@ -8,7 +8,7 @@ help: 			## Show this help
 	@echo ""
 .PHONY: help
 
-format: rustfmt rufffmt			## Run all formatting scripts
+format: rustfmt rufffmt	shfmt		## Run all formatting scripts
 .PHONY: format
 
 rustfmt:						## Run rustfmt
@@ -21,6 +21,10 @@ rufffmt:						## Run ruff format
 	ruff check --fix --select=I scripts
 	ruff check --fix --select=RUF022 scripts
 	@echo -e "\e[1;32mruff format clean!\e[0m"
+
+shfmt:							## Run shfmt format
+	shfmt --write --language-dialect bash --indent 4 scripts/*.sh
+	@echo -e "\e[1;32mshfmt clean!\e[0m"
 
 lint: typos reuse ruff clippy	## Run linting checks
 .PHONY: lint

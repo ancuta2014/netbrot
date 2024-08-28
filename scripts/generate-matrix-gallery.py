@@ -228,9 +228,8 @@ def main(
         width = len(str(nmatrices))
         for i in sorted(indices):
             mat = structural_connection_matrices[i]
-            n = mat.shape[0]
             ex = Exhibit(
-                name=f"EXHIBIT_{i:0{width}}_{n}x{n}_{suffix}".upper(),
+                name=f"EXHIBIT_{i:0{width}}_{suffix}".upper(),
                 mat=mat,
                 upper_left=complex(-3.75, 2.5),
                 lower_right=complex(1.25, -2.5),
