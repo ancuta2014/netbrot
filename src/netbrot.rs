@@ -25,7 +25,7 @@ where
     D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<Complex64, D, D> + Allocator<Complex64, D>,
+    DefaultAllocator: Allocator<D, D> + Allocator<D>,
 {
     /// Matrix used in the iteration
     pub mat: Matrix<D>,
@@ -45,7 +45,7 @@ where
     D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<Complex64, D, D> + Allocator<Complex64, D>,
+    DefaultAllocator: Allocator<D, D> + Allocator<D>,
 {
     pub fn new(mat: Matrix<D>, maxit: usize, escape_radius: f64) -> Self {
         Netbrot {
@@ -81,7 +81,7 @@ where
 #[derive(Clone, Debug)]
 pub struct EscapeResult<D: DimName>
 where
-    DefaultAllocator: Allocator<Complex64, D>,
+    DefaultAllocator: Allocator<D>,
 {
     /// Iteration at which the point escaped or None otherwise.
     pub iteration: Option<usize>,
@@ -105,7 +105,7 @@ type PeriodResult = Option<usize>;
 pub fn escape_radius_squared<D>(mat: Matrix<D>) -> f64
 where
     D: DimMin<D, Output = D>,
-    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
+    DefaultAllocator: Allocator<D> + Allocator<D, D>,
 {
     // NOTE: singular values are sorted descendingly, so we can just take the last
     // one here without worrying about it too much :D
@@ -156,7 +156,7 @@ where
     D: DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
+    DefaultAllocator: Allocator<D> + Allocator<D, D>,
 {
     let mut z = brot.z0;
     let mat = brot.mat;
@@ -194,7 +194,7 @@ where
     D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
+    DefaultAllocator: Allocator<D> + Allocator<D, D>,
 {
     match netbrot_orbit_escape(brot) {
         EscapeResult { iteration: None, z } => {
@@ -249,7 +249,7 @@ pub fn render_orbit<D>(
     D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
+    DefaultAllocator: Allocator<D> + Allocator<D, D>,
 {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
     let maxit = brot.maxit;
@@ -286,7 +286,7 @@ pub fn render_period<D>(
     D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
+    DefaultAllocator: Allocator<D> + Allocator<D, D>,
 {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
 
@@ -316,7 +316,7 @@ pub fn render_fixed_points<D>(
     D: DimName + DimMin<D, Output = D>,
     Owned<Complex64, D>: Copy,
     Owned<Complex64, D, D>: Copy,
-    DefaultAllocator: Allocator<Complex64, D> + Allocator<Complex64, D, D>,
+    DefaultAllocator: Allocator<D> + Allocator<D, D>,
 {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
     let maxit = brot.maxit;
