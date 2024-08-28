@@ -93,13 +93,15 @@ class Exhibit:
         return self.mat.shape[0]
 
     @property
-    def escape_radius(self) -> float:
+    def escape_radius_estimate(self) -> float:
         n = self.size
         sigma = np.linalg.svdvals(self.mat)
 
-        escape_radius = 2.0 * np.sqrt(n) / np.min(sigma) ** 2
+        return 2.0 * np.sqrt(n) / np.min(sigma) ** 2
 
-        return min(self.max_escape_radius, escape_radius)
+    @property
+    def escape_radius(self) -> float:
+        return min(self.max_escape_radius, self.escape_radius_estimate)
 
     @property
     def stringified_mat(self) -> str:
@@ -196,6 +198,7 @@ def main(
     infile: pathlib.Path | None = None,
     outfile: pathlib.Path | None = None,
     *,
+    suffix: str = "STRUCTURE",
     slices: list[slice] | None = None,
     max_escape_radius: float = np.inf,
     overwrite: bool = False,
@@ -222,11 +225,12 @@ def main(
         for s in slices:
             indices.update(range(*s.indices(nmatrices)))
 
+        width = len(str(nmatrices))
         for i in sorted(indices):
             mat = structural_connection_matrices[i]
             n = mat.shape[0]
             ex = Exhibit(
-                name=f"EXHIBIT_{i}_{n}x{n}_STRUCTURAL",
+                name=f"EXHIBIT_{i:0{width}}_{n}x{n}_{suffix}".upper(),
                 mat=mat,
                 upper_left=complex(-3.75, 2.5),
                 lower_right=complex(1.25, -2.5),
@@ -234,6 +238,16 @@ def main(
             )
 
             exhibits.append(ex)
+            log.info(
+                "Loaded exhibit %d '%s': mat %s (cond %.5e) "
+                "escape radius %g (estimate %.5e)",
+                i,
+                ex.name,
+                ex.mat.shape,
+                np.linalg.cond(mat),
+                ex.escape_radius,
+                ex.escape_radius_estimate,
+            )
 
     env = make_jinja_env()
     result = env.from_string(TEMPLATE).render(exhibits=exhibits)
@@ -265,6 +279,12 @@ if __name__ == "__main__":
         help="A range of elements from the INFILE to load (format '1,2,2:6,:6')",
     )
     parser.add_argument(
+        "-s",
+        "--suffix",
+        default="STRUCTURE",
+        help="A suffix to add to the exhibit identifiers",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing files",
@@ -285,6 +305,7 @@ if __name__ == "__main__":
             args.infile,
             args.outfile,
             slices=parse_ranges(args.ranges),
+            suffix=args.suffix,
             max_escape_radius=args.max_escape_radius,
             overwrite=args.overwrite,
         )

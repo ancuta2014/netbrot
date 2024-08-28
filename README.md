@@ -42,6 +42,22 @@ and it can also look at periodicity of various points
 netbrot --color period -- out.png
 ```
 
+Selecting the matrix to use in the rendering is not very user friendly at the moment.
+The setup (matrix and rendering window) is hardcoded in ``main.rs`` using the
+examples from ``gallery.rs``.
+
+To generate additional hardcoded examples, use the `generate-matrix-gallery.py`
+script with a `npz` file. For example
+
+.. code:: sh
+
+    python scripts/generate-matrix-gallery.py \
+        --max-escape-radius 100 \
+        --ranges 2:10 \
+        --overwrite \
+        --outfile src/gallery.rs \
+        --infile data/matrices.npz
+
 Example
 -------
 
