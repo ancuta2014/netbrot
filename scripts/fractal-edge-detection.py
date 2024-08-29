@@ -65,6 +65,7 @@ def main(
     filenames: list[pathlib.Path],
     outfile: pathlib.Path | None,
     *,
+    extent: list[int] | None = None,
     overwrite: bool = False,
 ) -> int:
     try:
@@ -84,6 +85,9 @@ def main(
 
     if not overwrite and outfile is not None and outfile.exists():
         log.error("Output file exists (use --overwrite): '%s'.", outfile)
+
+    if extent is None:
+        extent = [-3.75, 1.25, -2.5, 2.5]
 
     from itertools import cycle
 
@@ -122,7 +126,7 @@ def main(
         G = np.minimum(255, edges * g).astype(edges.dtype)
         B = np.minimum(255, edges * b).astype(edges.dtype)
         colored = cv2.merge((B, G, R, edges))
-        ax.imshow(colored)
+        ax.imshow(colored, origin="lower", extent=extent)
 
     if outfile is None:
         outfile = "result"
@@ -142,6 +146,13 @@ if __name__ == "__main__":
     parser.add_argument("filenames", nargs="+", type=pathlib.Path)
     parser.add_argument("-o", "--outfile", type=pathlib.Path, default=None)
     parser.add_argument(
+        "--extent",
+        nargs=4,
+        type=float,
+        default=[-3.75, 1.25, -2.5, 2.5],
+        help="Extent limits (left, right, bottom, top) passed to imshow",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite existing files",
@@ -157,4 +168,11 @@ if __name__ == "__main__":
     if not args.quiet:
         log.setLevel(logging.INFO)
 
-    raise SystemExit(main(args.filenames, args.outfile, overwrite=args.overwrite))
+    raise SystemExit(
+        main(
+            args.filenames,
+            args.outfile,
+            extent=args.extent,
+            overwrite=args.overwrite,
+        )
+    )
