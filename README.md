@@ -31,32 +31,37 @@ Usage
 -----
 
 This is currently **very experimental** and just meant for playing around. Even
-so, it's nicely parallelized with `rayon` and colored.
-
-It can do the usual orbit iteration
-```
+so, it's nicely parallelized with `rayon` and colored. It can do the usual orbit
+iteration
+```bash
 netbrot --color orbit -- out.png
 ```
-and it can also look at periodicity of various points
-```
+and it can also look at periodicity
+```bash
 netbrot --color period -- out.png
 ```
 
 Selecting the matrix to use in the rendering is not very user friendly at the moment.
-The setup (matrix and rendering window) is hardcoded in ``main.rs`` using the
-examples from ``gallery.rs``.
+The setup (matrix and rendering window) is hardcoded in `main.rs` using the
+examples from `gallery.rs`.
 
 To generate additional hardcoded examples, use the `generate-matrix-gallery.py`
 script with a `npz` file. For example
+```bash
+python scripts/generate-matrix-gallery.py \
+    --max-escape-radius 100 \
+    --ranges 2:10 \
+    --overwrite \
+    --outfile src/gallery.rs \
+    --infile data/matrices.npz
+```
 
-.. code:: sh
-
-    python scripts/generate-matrix-gallery.py \
-        --max-escape-radius 100 \
-        --ranges 2:10 \
-        --overwrite \
-        --outfile src/gallery.rs \
-        --infile data/matrices.npz
+With those things in mind, my hacky workflow is:
+1. Add an example matrix in `gallery.rs` (either manually or with the script).
+2. Update the selected example in `main.rs`.
+3. Compile (`make release`).
+4. Run `./target/release/netbrot -r 1024 -- output.png`.
+5. Step back in awe of the pretty picture.
 
 Example
 -------
