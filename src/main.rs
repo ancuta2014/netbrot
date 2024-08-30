@@ -61,7 +61,7 @@ fn main() {
     let filename = args.filename;
     println!("Coloring: {:?}", color_type);
 
-    let exhibit = gallery::EXHIBIT_3_3X3_FULL;
+    let exhibit = gallery::EXHIBIT_3_DEFAULTS;
     let upper_left = exhibit.upper_left;
     let lower_right = exhibit.lower_right;
 

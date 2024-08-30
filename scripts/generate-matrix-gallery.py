@@ -114,38 +114,6 @@ class Exhibit:
         )
 
 
-DEFAULT_EXHIBITS = [
-    Exhibit(
-        name="EXHIBIT_1_2X2_FULL",
-        mat=np.array([[1.0, 0.8], [1.0, -0.5]]),
-        upper_left=complex(-0.9, 0.6),
-        lower_right=complex(0.4, -0.6),
-        max_escape_radius=np.inf,
-    ),
-    Exhibit(
-        name="EXHIBIT_2_2X2_FULL",
-        mat=np.array([[1.0, 1.0], [0.0, 1.0]]),
-        upper_left=complex(-0.9, 0.6),
-        lower_right=complex(0.4, -0.6),
-        max_escape_radius=np.inf,
-    ),
-    Exhibit(
-        name="EXHIBIT_3_3X3_FULL",
-        mat=np.array([[1.0, 0.0, 0.0], [-1.0, 1.0, 0.0], [1.0, 1.0, -1.0]]),
-        upper_left=complex(-1.25, 0.75),
-        lower_right=complex(0.5, -0.75),
-        max_escape_radius=np.inf,
-    ),
-    Exhibit(
-        name="EXHIBIT_3_3X3_BABY",
-        mat=np.array([[1.0, 0.0, 0.0], [-1.0, 1.0, 0.0], [1.0, 1.0, -1.0]]),
-        upper_left=complex(-1.025, 0.025),
-        lower_right=complex(-0.975, -0.025),
-        max_escape_radius=np.inf,
-    ),
-]
-
-
 def parse_ranges(ranges: str | None) -> list[slice]:
     if ranges is None:
         return []
@@ -195,53 +163,63 @@ def make_jinja_env() -> jinja2.Environment:
 
 
 def main(
-    infile: pathlib.Path | None = None,
+    infiles: list[pathlib.Path],
     outfile: pathlib.Path | None = None,
     *,
-    suffix: str = "STRUCTURE",
     slices: list[slice] | None = None,
     max_escape_radius: float = np.inf,
     overwrite: bool = False,
 ) -> int:
-    if infile is not None and not infile.exists():
-        log.error("File does not exist: '%s'", infile)
-        return 1
-
     if not overwrite and outfile is not None and outfile.exists():
         log.error("Output file exists (use --overwrite): '%s'.", outfile)
         return 1
 
-    exhibits = DEFAULT_EXHIBITS.copy()
+    if slices is None:
+        slices = [slice(None) for _ in infiles]
 
-    if infile:
-        data = np.load(infile)
-        structural_connection_matrices = data["structural_connection_matrices"]
-        upper_lefts = data["upper_lefts"]
-        lower_rights = data["lower_rights"]
-        nmatrices = structural_connection_matrices.shape[0]
+    # {{{ read matrices
 
-        if not slices:
-            slices = [slice(nmatrices)]
+    ret = 0
+    exhibits = []
+
+    for filename, fslices in zip(infiles, slices):
+        if not filename.exists():
+            ret = 1
+            log.error("File does not exist: '%s'.", filename)
+            continue
+
+        data = np.load(filename, allow_pickle=True)
+
+        matrices = data["matrices"]
+        upper_left = data["upper_lefts"]
+        lower_right = data["lower_rights"]
 
         indices = set()
-        for s in slices:
-            indices.update(range(*s.indices(nmatrices)))
+        for s in fslices:
+            indices.update(range(*s.indices(matrices.size)))
 
-        width = len(str(nmatrices))
+        if not indices:
+            ret = 1
+            log.error("No indices in range for '%s'.", filename)
+            continue
+
+        suffix = filename.stem.upper()
+        width = len(str(matrices.size))
+
         for i in sorted(indices):
-            mat = structural_connection_matrices[i]
+            mat = matrices[i]
             ex = Exhibit(
                 name=f"EXHIBIT_{i:0{width}}_{suffix}".upper(),
                 mat=mat,
-                upper_left=complex(upper_lefts[i]),
-                lower_right=complex(lower_rights[i]),
+                upper_left=complex(upper_left[i]),
+                lower_right=complex(lower_right[i]),
                 max_escape_radius=max_escape_radius,
             )
 
             exhibits.append(ex)
             log.info(
-                "Loaded exhibit %d '%s': mat %s (cond %.5e) "
-                "escape radius %g (estimate %.5e)",
+                "Loaded exhibit %3d '%s': shape %s (cond %.3e) "
+                "escape radius %g (estimate %.3e)",
                 i,
                 ex.name,
                 ex.mat.shape,
@@ -249,6 +227,8 @@ def main(
                 ex.escape_radius,
                 ex.escape_radius_estimate,
             )
+
+    # }}}
 
     env = make_jinja_env()
     result = env.from_string(TEMPLATE).render(exhibits=exhibits)
@@ -259,31 +239,25 @@ def main(
     else:
         print(result)
 
-    return 0
+    return ret
 
 
 if __name__ == "__main__":
     import argparse
 
     parser = argparse.ArgumentParser()
-    parser.add_argument("-i", "--infile", type=pathlib.Path, default=None)
+    parser.add_argument(
+        "filenames",
+        nargs="+",
+        help="List of (ranged) filenames with the format 'filename.npz[@1,4:10]'",
+    )
+
     parser.add_argument("-o", "--outfile", type=pathlib.Path, default=None)
     parser.add_argument(
         "--max-escape-radius",
         type=float,
         default=np.inf,
         help="Desired maximum escape radius for the infile data",
-    )
-    parser.add_argument(
-        "-r",
-        "--ranges",
-        help="A range of elements from the INFILE to load (format '1,2,2:6,:6')",
-    )
-    parser.add_argument(
-        "-s",
-        "--suffix",
-        default="STRUCTURE",
-        help="A suffix to add to the exhibit identifiers",
     )
     parser.add_argument(
         "--overwrite",
@@ -301,12 +275,24 @@ if __name__ == "__main__":
     if not args.quiet:
         log.setLevel(logging.INFO)
 
+    infiles = []
+    ranges = []
+
+    for value in args.filenames:
+        parts = value.rsplit("@", maxsplit=1)
+        if len(parts) == 1:
+            infile, rs = parts[0], ":"
+        else:
+            infile, rs = parts
+
+        infiles.append(pathlib.Path(infile))
+        ranges.append(rs)
+
     raise SystemExit(
         main(
-            args.infile,
+            infiles,
             args.outfile,
-            slices=parse_ranges(args.ranges),
-            suffix=args.suffix,
+            slices=[parse_ranges(rs) for rs in ranges],
             max_escape_radius=args.max_escape_radius,
             overwrite=args.overwrite,
         )

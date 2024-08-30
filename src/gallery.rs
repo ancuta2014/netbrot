@@ -23,30 +23,43 @@ pub struct Exhibit<const D: usize> {
     pub lower_right: Complex64,
 }
 
+
 #[allow(dead_code)]
-pub const EXHIBIT_1_2X2_FULL: Exhibit<2> = Exhibit::<2> {
+pub const EXHIBIT_0_DEFAULTS: Exhibit<2> = Exhibit::<2> {
     mat: matrix![
         c64!(1.0), c64!(0.8);
         c64!(1.0), c64!(-0.5);
     ],
     escape_radius: 3.4742662001265163,
-    upper_left: Complex64 { re: -0.9, im: 0.6 },
-    lower_right: Complex64 { re: 0.4, im: -0.6 },
+    upper_left: Complex64 {
+        re: -0.9,
+        im: 0.6,
+    },
+    lower_right: Complex64 {
+        re: 0.4,
+        im: -0.6,
+    },
 };
 
 #[allow(dead_code)]
-pub const EXHIBIT_2_2X2_FULL: Exhibit<2> = Exhibit::<2> {
+pub const EXHIBIT_1_DEFAULTS: Exhibit<2> = Exhibit::<2> {
     mat: matrix![
         c64!(1.0), c64!(1.0);
         c64!(0.0), c64!(1.0);
     ],
     escape_radius: 7.404918347287666,
-    upper_left: Complex64 { re: -0.9, im: 0.6 },
-    lower_right: Complex64 { re: 0.4, im: -0.6 },
+    upper_left: Complex64 {
+        re: -0.9,
+        im: 0.6,
+    },
+    lower_right: Complex64 {
+        re: 0.4,
+        im: -0.6,
+    },
 };
 
 #[allow(dead_code)]
-pub const EXHIBIT_3_3X3_FULL: Exhibit<3> = Exhibit::<3> {
+pub const EXHIBIT_2_DEFAULTS: Exhibit<3> = Exhibit::<3> {
     mat: matrix![
         c64!(1.0), c64!(0.0), c64!(0.0);
         c64!(-1.0), c64!(1.0), c64!(0.0);
@@ -57,11 +70,14 @@ pub const EXHIBIT_3_3X3_FULL: Exhibit<3> = Exhibit::<3> {
         re: -1.25,
         im: 0.75,
     },
-    lower_right: Complex64 { re: 0.5, im: -0.75 },
+    lower_right: Complex64 {
+        re: 0.5,
+        im: -0.75,
+    },
 };
 
 #[allow(dead_code)]
-pub const EXHIBIT_3_3X3_BABY: Exhibit<3> = Exhibit::<3> {
+pub const EXHIBIT_3_DEFAULTS: Exhibit<3> = Exhibit::<3> {
     mat: matrix![
         c64!(1.0), c64!(0.0), c64!(0.0);
         c64!(-1.0), c64!(1.0), c64!(0.0);

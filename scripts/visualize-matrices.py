@@ -61,7 +61,12 @@ def set_recommended_matplotlib() -> None:
         mp.rc(group, **params)
 
 
-def main(filename: pathlib.Path, *, overwrite: bool = False) -> int:
+def main(
+    filename: pathlib.Path,
+    *,
+    name: str = "matrices",
+    overwrite: bool = False,
+) -> int:
     if not filename.exists():
         log.error("File does not exist: '%s'", filename)
         return 1
@@ -69,19 +74,19 @@ def main(filename: pathlib.Path, *, overwrite: bool = False) -> int:
     import matplotlib.pyplot as mp
     from matplotlib.colors import LogNorm
 
-    data = np.load(filename)
-    structural_connection_matrices = data["structural_connection_matrices"]
+    data = np.load(filename, allow_pickle=True)
+    matrices = data[name]
 
     set_recommended_matplotlib()
 
-    for i in range(structural_connection_matrices.shape[0]):
-        mat = structural_connection_matrices[i]
+    for i in range(matrices.size):
+        mat = matrices[i]
         eigs = np.linalg.eigvals(mat)
         kappa = np.linalg.cond(mat)
 
         fig, (ax1, ax2) = mp.subplots(1, 2)
 
-        ax1.imshow(mat, norm=LogNorm())
+        ax1.imshow(mat, norm=LogNorm() if mat.shape[0] > 32 else None)
         ax2.plot(eigs.real, eigs.imag, "o")
         ax2.set_xlim([-1.0, 1.0])
         ax2.set_title(rf"$\kappa = {kappa:.5e}$")
@@ -101,6 +106,12 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("filename", type=pathlib.Path)
     parser.add_argument(
+        "-n",
+        "--variable-name",
+        default="matrices",
+        help="Name of the variable containing matrices",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="overwrite existing files",
@@ -119,6 +130,7 @@ if __name__ == "__main__":
     raise SystemExit(
         main(
             args.filename,
+            name=args.variable_name,
             overwrite=args.overwrite,
         )
     )

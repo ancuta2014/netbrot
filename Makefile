@@ -8,6 +8,8 @@ help: 			## Show this help
 	@echo ""
 .PHONY: help
 
+# {{{ formatting
+
 format: rustfmt rufffmt	shfmt		## Run all formatting scripts
 .PHONY: format
 
@@ -25,6 +27,10 @@ rufffmt:						## Run ruff format
 shfmt:							## Run shfmt format
 	shfmt --write --language-dialect bash --indent 4 scripts/*.sh
 	@echo -e "\e[1;32mshfmt clean!\e[0m"
+
+# }}}
+
+# {{{ linting
 
 lint: typos reuse ruff clippy	## Run linting checks
 .PHONY: lint
@@ -48,10 +54,42 @@ clippy:			## Run clippy lint checks
 	cargo clippy --all-targets --all-features
 	@echo -e "\e[1;32mclippy clean!\e[0m"
 
+# }}}
+
+# {{{ building
+
 build:			## Build the project in debug mode
-	cargo build --verbose
+	cargo build --locked --all-features --verbose
 .PHONY: build
 
 release:		## Build project in release mode
 	cargo build --locked --all-features --release
 .PHONY: release
+
+# }}}
+
+# {{{ gallery
+
+mat-default:			## Generate default test matrices
+	$(PYTHON) scripts/generate-default-exhibits.py \
+		--overwrite \
+		--outfile data/defaults.npz
+.PHONY: mat-default
+
+mat-structural:			## Convert example structural data to npz
+	$(PYTHON) scripts/convert-mat.py \
+		--overwrite \
+		-n 'Structural_Conn' \
+		--upper-left='-3.75+2.5j' \
+		--lower-right='1.25-2.5j' \
+		--outfile data/structural.npz \
+		data/structural_scaled_by_task_max.mat
+.PHONY: mat-structural
+
+gallery-default:		## Generate default gallery
+	$(PYTHON) scripts/generate-matrix-gallery.py \
+		--overwrite \
+		--outfile src/gallery.rs \
+		data/defaults.npz
+
+# }}}
