@@ -45,7 +45,7 @@ ruff:			## Run ruff checks over the source code
 .PHONY: ruff
 
 clippy:			## Run clippy lint checks
-	cargo clippy
+	cargo clippy --all-targets --all-features
 	@echo -e "\e[1;32mclippy clean!\e[0m"
 
 build:			## Build the project in debug mode
@@ -53,5 +53,5 @@ build:			## Build the project in debug mode
 .PHONY: build
 
 release:		## Build project in release mode
-	cargo build --release
+	cargo build --locked --all-features --release
 .PHONY: release
