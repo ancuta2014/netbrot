@@ -27,5 +27,5 @@ for i in $(seq -f '%02g' ${index_start} ${index_end}); do
     sed -i "64s/gallery::EXHIBIT_.*/gallery::EXHIBIT_${i}_${suffix^^};/" 'src/main.rs'
 
     with_echo cargo build --release
-    # with_echo ./target/release/netbrot -r 1200 -- "result-${suffix,,}-${i}.png"
+    with_echo ./target/release/netbrot -r 1200 -- "result-${suffix,,}-${i}.png"
 done
