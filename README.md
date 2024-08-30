@@ -50,10 +50,10 @@ script with a `npz` file. For example
 ```bash
 python scripts/generate-matrix-gallery.py \
     --max-escape-radius 100 \
-    --ranges 2:10 \
     --overwrite \
     --outfile src/gallery.rs \
-    --infile data/matrices.npz
+    data/defaults.npz
+    data/matrices.npz
 ```
 
 With those things in mind, my hacky workflow is:
