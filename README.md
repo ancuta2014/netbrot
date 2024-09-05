@@ -31,37 +31,40 @@ Usage
 -----
 
 This is currently **very experimental** and just meant for playing around. Even
-so, it's nicely parallelized with `rayon` and colored. It can do the usual orbit
-iteration
-```bash
-netbrot --color orbit -- out.png
-```
-and it can also look at periodicity
-```bash
-netbrot --color period -- out.png
-```
-
-Selecting the matrix to use in the rendering is not very user friendly at the moment.
-The setup (matrix and rendering window) is hardcoded in `main.rs` using the
-examples from `gallery.rs`.
-
-To generate additional hardcoded examples, use the `generate-matrix-gallery.py`
-script with a `npz` file. For example
-```bash
-python scripts/generate-matrix-gallery.py \
-    --max-escape-radius 100 \
-    --overwrite \
-    --outfile src/gallery.rs \
-    data/defaults.npz
-    data/matrices.npz
+so, it's nicely parallelized with `rayon` and colored. The executable takes in
+JSON files that contain the matrix, the bounds, and a desired escape radius.
+There are a few examples in `data/` and they look like this
+```json
+{
+  "mat": [
+    [[1.0, 0.0], [0.8, 0.0], [1.0, 0.0], [-0.5,0.0]],
+    2,
+    2
+  ],
+  "escape_radius": 3.4742662001265163,
+  "upper_left": [-0.9, 0.6],
+  "lower_right": [0.4, -0.6]
+}
 ```
 
-With those things in mind, my hacky workflow is:
-1. Add an example matrix in `gallery.rs` (either manually or with the script).
-2. Update the selected example in `main.rs`.
-3. Compile (`make release`).
-4. Run `./target/release/netbrot -r 1024 -- output.png`.
-5. Step back in awe of the pretty picture.
+The matrix is given as `[[ list of entries], nx, ny]`, where each entry is
+a `[z.real, z.imag]` tuple. The upper and lower corners of the rendering box
+are also given as `[x, y]` coordinates. Using such a file, you can just run
+```bash
+netbrot --color orbit data/exhibit-example-0.json
+```
+to get nicely colored orbits or
+```bash
+netbrot --color orbit data/exhibit-example-0.json
+```
+to get nicely colored periods.
+
+There a little script `scripts/generate-exhibits.py` that can be used to generate
+some more random matrices of various sizes, but you're encouraged to just make your
+own. This script can be called as
+```bash
+python scripts/generate-exhibits.py random --size 5 --count 10 feedforward
+```
 
 Example
 -------

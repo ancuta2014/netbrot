@@ -66,30 +66,30 @@ release:		## Build project in release mode
 	cargo build --locked --all-features --release
 .PHONY: release
 
+windows:		## Cross compile for windows
+	cargo build --target x86_64-pc-windows-gnu --locked --all-features --release
+.PHONY: windows
+
 # }}}
 
 # {{{ gallery
 
 mat-default:			## Generate default test matrices
-	$(PYTHON) scripts/generate-default-exhibits.py \
+	$(PYTHON) scripts/generate-exhibits.py \
 		--overwrite \
-		--outfile data/defaults.npz
+		--outfile data/exhibit-example.json \
+		random --type fixed
 .PHONY: mat-default
 
 mat-structural:			## Convert example structural data to npz
-	$(PYTHON) scripts/convert-mat.py \
+	$(PYTHON) scripts/generate-exhibits.py \
 		--overwrite \
+		--outfile data/structural.json \
+		--xlim '-3.75' '1.25' \
+		--ylim '-2.5' '2.5' \
+		convert \
 		-n 'Structural_Conn' \
-		--upper-left='-3.75+2.5j' \
-		--lower-right='1.25-2.5j' \
-		--outfile data/structural.npz \
 		data/structural_scaled_by_task_max.mat
 .PHONY: mat-structural
-
-gallery-default:		## Generate default gallery
-	$(PYTHON) scripts/generate-matrix-gallery.py \
-		--overwrite \
-		--outfile src/gallery.rs \
-		data/defaults.npz
 
 # }}}
