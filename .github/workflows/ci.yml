@@ -54,4 +54,18 @@ jobs:
         make release
         ./target/release/netbrot -r 2048 data/exhibit-example-2.json
 
+  windows:
+    needs: [ 'build' ]
+    name: Publish Windows Executable
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build Executable
+        run: |
+          make release
+      - uses: actions/upload-artifact@v4
+        with:
+          name: netbrot-windows.exe
+          path: /target/release/netbrot.exe
+
 # vim: set ts=2 sw=2 et:
