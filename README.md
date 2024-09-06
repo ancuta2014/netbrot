@@ -72,15 +72,31 @@ Example
 
 As a simple example, we take the matrix (see `data/exhibit-example-0.json`)
 ```math
+A =
 \begin{bmatrix}
 1 & 0.8 \\
 1 & -0.5
 \end{bmatrix}
+\implies
+\begin{bmatrix}
+z_1^{n + 1} \\
+z_2^{n + 1}
+\end{bmatrix}
+=
+\begin{bmatrix}
+(z_1^n + 0.8 z_2^n)^2 + c \\
+(z_1^n - 0.5 z_2^n)^2 + c
+\begin{bmatrix}.
 ```
 
 <p align="center">
     <img src="https://github.com/alexfikl/netbrot/blob/main/docs/netbrot-2x2.png?raw=true" alt="Netbrot 2x2"/>
 </p>
+
+Obtained by running
+```bash
+netbrot -r 2000 -m 128 data/exhibit-example-0.json
+```
 
 License
 -------
