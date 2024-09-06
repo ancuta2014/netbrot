@@ -29,8 +29,6 @@ use clap::{Parser, ValueEnum, ValueHint};
 use image::RgbImage;
 use rayon::prelude::*;
 
-const MAX_ITERATIONS: usize = 256;
-
 // {{{ Command-line parser
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -53,6 +51,10 @@ struct Cli {
     /// Resolution of the resulting image
     #[arg(short, long, default_value_t = 8000)]
     resolution: u32,
+
+    /// Maximum number of iterations before a point is considered in the set
+    #[arg(short, long, default_value_t = 256)]
+    maxit: usize,
 
     /// Input file name containing the exhibit to render
     #[arg(value_hint = ValueHint::FilePath)]
@@ -109,7 +111,8 @@ fn main() {
 
     let mut pixels = RgbImage::new(bounds.0 as u32, bounds.1 as u32);
 
-    let brot = Netbrot::new(&exhibit.mat, MAX_ITERATIONS, exhibit.escape_radius);
+    let brot = Netbrot::new(&exhibit.mat, args.maxit, exhibit.escape_radius);
+    println!("Escape radius {}", brot.escape_radius_squared.sqrt());
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");

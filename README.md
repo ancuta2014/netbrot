@@ -48,8 +48,9 @@ There are a few examples in `data/` and they look like this
 ```
 
 The matrix is given as `[[ list of entries ], nx, ny]`, where each entry is
-a `[z.real, z.imag]` tuple. The upper and lower corners of the rendering box
-are also given as `[x, y]` coordinates. Using such a file, you can just run
+a `[z.real, z.imag]` tuple. The entries are listed column by column. The upper
+and lower corners of the rendering box are also given as `[x, y]` coordinates.
+Using such a file, you can just run
 ```bash
 netbrot --color orbit data/exhibit-example-0.json
 ```
@@ -69,7 +70,7 @@ python scripts/generate-exhibits.py random --size 5 --count 10 feedforward
 Example
 -------
 
-As a simple example, we take the matrix
+As a simple example, we take the matrix (see `data/exhibit-example-0.json`)
 ```math
 \begin{bmatrix}
 1 & 0.8 \\

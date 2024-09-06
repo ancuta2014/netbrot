@@ -115,7 +115,7 @@ pub fn netbrot_orbit_escape(brot: &Netbrot) -> EscapeResult {
     let maxit = brot.maxit;
     let escape_radius_squared = brot.escape_radius_squared;
 
-    let mut matz = z.clone();
+    let mut matz = brot.z0.clone();
     mat.mul_to(&z, &mut matz);
 
     for i in 0..maxit {

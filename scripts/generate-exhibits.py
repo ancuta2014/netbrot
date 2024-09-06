@@ -25,7 +25,7 @@ DEFAULT_LOWER_RIGHT = (1.25, -2.5)
 
 
 def serde_matrix_format(mat: Array) -> list[Any]:
-    result = [[float(item), 0.0] for row in mat for item in row]
+    result = [[float(item), 0.0] for row in mat.T for item in row]
     return [result, *mat.shape]
 
 
