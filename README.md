@@ -47,7 +47,7 @@ There are a few examples in `data/` and they look like this
 }
 ```
 
-The matrix is given as `[[ list of entries], nx, ny]`, where each entry is
+The matrix is given as `[[ list of entries ], nx, ny]`, where each entry is
 a `[z.real, z.imag]` tuple. The upper and lower corners of the rendering box
 are also given as `[x, y]` coordinates. Using such a file, you can just run
 ```bash
@@ -55,7 +55,7 @@ netbrot --color orbit data/exhibit-example-0.json
 ```
 to get nicely colored orbits or
 ```bash
-netbrot --color orbit data/exhibit-example-0.json
+netbrot --color period data/exhibit-example-0.json
 ```
 to get nicely colored periods.
 
