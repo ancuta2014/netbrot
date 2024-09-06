@@ -4,7 +4,7 @@ Netbrot
 This repository contains some experiments for vector Mandelbrot sets. We look
 at the map
 ```math
-f(z) = (A z)^2 + c,$$
+f(z) = (A z)^2 + c,
 ```
 where $A \in \mathbb{C}^{n \times n}$ and $z \in \mathbb{C}^n$ with just
 $c \in \mathbb{C}$. This gives some interesting results that are not directly
