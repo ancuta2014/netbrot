@@ -77,7 +77,9 @@ A =
 1 & 0.8 \\
 1 & -0.5
 \end{bmatrix}
+
 \implies
+
 \begin{bmatrix}
 z_1^{n + 1} \\
 z_2^{n + 1}
@@ -86,7 +88,7 @@ z_2^{n + 1}
 \begin{bmatrix}
 (z_1^n + 0.8 z_2^n)^2 + c \\
 (z_1^n - 0.5 z_2^n)^2 + c
-\begin{bmatrix}.
+\end{bmatrix}.
 ```
 
 <p align="center">
