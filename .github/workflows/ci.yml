@@ -54,7 +54,7 @@ jobs:
         make release
         ./target/release/netbrot -r 2048 data/exhibit-example-2.json
 
-  windows:
+  nightly-windows:
     needs: [ 'build' ]
     name: Publish Windows Executable
     runs-on: windows-latest
@@ -63,9 +63,13 @@ jobs:
       - name: Build Executable
         run: |
           cargo build --locked --all-features --release
-      - uses: actions/upload-artifact@v4
+      - name: Release Nightly
+        uses: softprops/action-gh-release@v1
         with:
-          name: netbrot-release-windows.exe
-          path: target/release/netbrot.exe
+          prerelease: true
+          name: nightly
+          tag_name: nightly
+          files: target/release/netbrot.exe
+          fail_on_unmatched_files: true
 
 # vim: set ts=2 sw=2 et:
