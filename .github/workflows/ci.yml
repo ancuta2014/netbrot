@@ -58,13 +58,15 @@ jobs:
     needs: [ 'build' ]
     name: Publish Windows Executable
     runs-on: windows-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
       - name: Build Executable
         run: |
           cargo build --locked --all-features --release
       - name: Release Nightly
-        uses: softprops/action-gh-release@v1
+        uses: softprops/action-gh-release@v2
         with:
           prerelease: true
           name: nightly
