@@ -50,6 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v4
+    - uses: Swatinem/rust-cache@v2
     - run: |
         make release
         ./target/release/netbrot -r 2048 data/exhibit-example-2.json
@@ -62,6 +63,7 @@ jobs:
       contents: write
     steps:
       - uses: actions/checkout@v4
+      - uses: Swatinem/rust-cache@v2
       - name: Build Executable
         run: |
           cargo build --locked --all-features --release
