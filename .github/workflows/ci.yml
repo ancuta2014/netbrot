@@ -71,7 +71,8 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           prerelease: true
-          name: nightly
+          name: Nightly
+          body: This release is updated at each commit with a newly compiled `netbrot.exe`.
           tag_name: nightly
           files: target/release/netbrot.exe
           fail_on_unmatched_files: true
