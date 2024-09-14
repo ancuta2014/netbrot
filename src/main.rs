@@ -144,9 +144,13 @@ fn main() {
     println!("Elapsed {}s!", elapsed);
 
     match args.outfile {
-        Some(filename) => pixels.save(filename).unwrap(),
+        Some(filename) => {
+            println!("Writing result to '{}'.", filename);
+            pixels.save(filename).unwrap();
+        }
         None => {
             let filename = Path::new(&args.exhibit).with_extension("png");
+            println!("Writing result to '{}'.", filename.display());
             pixels.save(filename).unwrap();
         }
     };

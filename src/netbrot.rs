@@ -152,15 +152,15 @@ pub fn netbrot_orbit_period(brot: &Netbrot) -> PeriodResult {
             let mat = &brot.mat;
             let c = brot.c;
             let mut matz = z.clone();
-            let mut z_period: Vec<Vector> = Vec::new();
+            let mut z_period: Vec<Vector> = Vec::with_capacity(PERIOD_WINDOW);
 
             // Evaluate some more points
-            z_period[0] = z.clone();
+            z_period.push(z.clone());
             mat.mul_to(&z, &mut matz);
 
             #[allow(clippy::needless_range_loop)]
             for i in 1..PERIOD_WINDOW {
-                z_period[i] = matz.component_mul(&matz).add_scalar(c);
+                z_period.push(matz.component_mul(&matz).add_scalar(c));
                 mat.mul_to(&z_period[i], &mut matz);
             }
 
@@ -173,7 +173,7 @@ pub fn netbrot_orbit_period(brot: &Netbrot) -> PeriodResult {
                     z_period_norm += (zj - zi).norm_squared();
                 }
 
-                if z_period_norm.sqrt() < 1.0e-5 {
+                if z_period_norm.sqrt() < 1.0e-3 {
                     return Some(i - 1);
                 }
             }
