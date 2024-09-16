@@ -12,6 +12,7 @@
 
 mod colorschemes;
 mod netbrot;
+mod render;
 
 use std::error::Error;
 use std::fs::File;
@@ -19,7 +20,8 @@ use std::io::BufReader;
 use std::path::Path;
 use std::time::Instant;
 
-use netbrot::{pixel_to_point, render_fixed_points, render_orbit, render_period, Netbrot};
+use netbrot::Netbrot;
+use render::{pixel_to_point, render_orbit, render_period};
 
 use nalgebra::DMatrix;
 use num::complex::Complex64;
@@ -37,8 +39,8 @@ enum ColorType {
     Orbit,
     /// Plot periodicity for orbits that do not escape.
     Period,
-    /// Fixed points
-    Fixed,
+    // Fixed points
+    // Fixed,
 }
 
 #[derive(Parser, Debug)]
@@ -133,9 +135,6 @@ fn main() {
                 }
                 ColorType::Period => {
                     render_period(band, &brot, band_bounds, band_upper_left, band_lower_right)
-                }
-                ColorType::Fixed => {
-                    render_fixed_points(band, &brot, band_bounds, band_upper_left, band_lower_right)
                 }
             }
         });

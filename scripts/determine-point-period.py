@@ -5,7 +5,7 @@ from __future__ import annotations
 
 import logging
 import pathlib
-from typing import Any
+from typing import Any, NamedTuple
 
 import numpy as np
 import numpy.linalg as la
@@ -121,7 +121,15 @@ def netbrot_prime_lsq(z0: Array, mat: Matrix, c: complex, n: int) -> Array:
 # {{{ main
 
 
-def find_unique_fixed_points(fixedpoints: Array, *, eps: float = 1.0e-15) -> Array:
+class FixedPointResult(NamedTuple):
+    x: Array
+    success: bool
+    message: str
+
+
+def find_unique_fixed_points(
+    fixedpoints: Array, mat: Array, c: complex, nperiod: int, *, eps: float = 1.0e-15
+) -> Array:
     _, npoints = fixedpoints.shape
     indices = []
 
@@ -129,10 +137,24 @@ def find_unique_fixed_points(fixedpoints: Array, *, eps: float = 1.0e-15) -> Arr
         isin = any(
             la.norm(fixedpoints[:, i] - fixedpoints[:, j]) < eps for j in indices
         )
+        if isin:
+            continue
 
-        if not isin:
-            indices.append(i)
+        is_lower_period = any(
+            la.norm(netbrot_fp(fixedpoints[:, i], mat, c, j)) < eps
+            for j in range(1, nperiod)
+        )
 
+        if is_lower_period:
+            continue
+
+        is_fp = la.norm(netbrot_fp(fixedpoints[:, i], mat, c, nperiod)) < eps
+        if not is_fp:
+            continue
+
+        indices.append(i)
+
+    log.info("indices: %s", indices)
     return np.array(indices)
 
 
@@ -162,7 +184,7 @@ def main(
 
     # {{{ generate a cloud of points in the escape sphere (?)
 
-    size = (nrows, npoints)
+    size = (nrows, 2 * npoints)
 
     # fmt: off
     rng = np.random.default_rng(seed=42)
@@ -171,9 +193,12 @@ def main(
         + 1.0j * rng.uniform(-escape_radius, escape_radius, size)
     )
     # fmt: on
-    # zs = rng.uniform(-1.0, 1.0, size) + 1.0j * rng.uniform(-1.0, 1.0, size)
-    # zs = escape_radius * rng.random(npoints) * zs / la.norm(zs, axis=0)
-    # assert np.all(la.norm(zs, axis=0) <= escape_radius)
+
+    # insist points are inside the escape radius
+    zs = zs[:, la.norm(zs, axis=0) < escape_radius][:, :npoints]
+    log.info("Got %d points.", zs.shape[1])
+
+    _, npoints = size = zs.shape
 
     # }}}
 
@@ -208,14 +233,35 @@ def main(
     eps = 1.0e-5
     fixedpoints = np.empty_like(zs)
     for m in range(npoints):
+        # try:
+        #     result = so.fixed_point(
+        #         netbrot,
+        #         zs[:, m],
+        #         args=(mat, c, nperiod),
+        #         xtol=eps,
+        #         maxiter=10000,
+        #         method="del2",
+        #     )
+        #     result = FixedPointResult(
+        #         x=result, success=True, message="Reached desired xtol"
+        #     )
+        # except RuntimeError:
+        #     result = FixedPointResult(
+        #         x=np.zeros_like(zs[:, m]),
+        #         success=False,
+        #         message="Failed to converge after maxiter iterations",
+        #     )
+
         result = so.root(
-            netbrot,
+            netbrot_fp,
             zs[:, m],
             args=(mat, c, nperiod),
-            method="broyden1",
-            jac=netbrot_prime,
-            tol=eps,
-            options={"maxfev": 10000, "maxiter": 10000},
+            # NOTE: working methods:
+            #   broyden1, broyden2
+            method="broyden2",
+            jac=netbrot_prime_fp,
+            # tol=eps,
+            options={"maxfev": 10000, "fatol": eps, "xatol": eps, "maxiter": 10000},
         )
 
         # result = so.least_squares(
@@ -240,24 +286,37 @@ def main(
         # assert result.success, result
         fixedpoints[:, m] = result.x
 
-        log.info("[%04d] Result: %s", m, result.x)
-        log.info("               %s", result.message)
-        log.info(
-            "[%04d]         norm %.8e error %.8e jac %.8e",
-            m,
-            la.norm(result.x),
-            la.norm(result.x - netbrot(result.x, mat, c, nperiod)),
-            0.0,  # la.norm(result.jac),
-        )
+        log.info("[%04d] Message: %s (z0 %s)", m, result.message, zs[:, m])
+        if result.success:
+            log.info("                zstar %s", result.x)
+            log.info(
+                "                norm %.8e error %.8e jac %.8e",
+                la.norm(result.x),
+                la.norm(result.x - netbrot(result.x, mat, c, nperiod)),
+                0.0,  # la.norm(result.jac),
+            )
 
     # }}}
 
     import matplotlib.pyplot as mp
 
     set_recommended_matplotlib()
-    indices = find_unique_fixed_points(fixedpoints, eps=eps)
     fixednorms = la.norm(fixedpoints, axis=0)
-    fixederrors = la.norm(netbrot(fixedpoints, mat, c, nperiod), axis=0)
+    fixedpoints = fixedpoints[:, fixednorms < 2 * escape_radius]
+
+    indices = find_unique_fixed_points(fixedpoints, mat, c, nperiod, eps=10 * eps)
+    fixednorms = la.norm(fixedpoints, axis=0)
+    fixederrors = la.norm(netbrot_fp(fixedpoints, mat, c, nperiod), axis=0)
+    fixederrors = np.maximum(fixederrors, 1.0e-16)
+
+    for i, index in enumerate(indices):
+        z_i = fixedpoints[:, index]
+        log.info(
+            "z^*_{%d}: (error %.8e) %s",
+            i,
+            la.norm(netbrot_fp(z_i, mat, c, nperiod)),
+            z_i,
+        )
 
     # {{{ plot magnitudes
 

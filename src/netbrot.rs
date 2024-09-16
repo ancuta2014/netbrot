@@ -1,17 +1,13 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
-use image::Rgb;
 use num::complex::{c64, Complex64};
 
 use nalgebra::{DMatrix, DVector};
 
-use crate::colorschemes::{get_period_color, get_smooth_orbit_color};
+use crate::render::{MAX_PERIODS, PERIOD_WINDOW};
 
-pub const MAX_PERIODS: usize = 20;
-const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
-
-// {{{ structs
+// {{{ types
 
 type Matrix = DMatrix<Complex64>;
 type Vector = DVector<Complex64>;
@@ -56,44 +52,81 @@ type PeriodResult = Option<usize>;
 
 // }}}
 
-// {{{ helpers
+// {{{ maps
 
-/// Estimate the escape radius for a given matrix $A$.
+/// Compute the *n* times composition of the Netbrot quadratic map.
 ///
-/// $$
-///     R = \frac{2 \sqrt{d}}{\sigma_{\text{min}}(A)^2}.
-/// $$
-#[allow(dead_code)]
-pub fn escape_radius_squared(mat: Matrix) -> f64 {
-    // NOTE: singular values are sorted descendingly, so we can just take the last
-    // one here without worrying about it too much :D
-    let n = mat.nrows();
-    let sigma_min_sqr = mat.view((0, 0), (n, n)).singular_values()[n - 1].powi(4);
-    let fac_sqr = 4.0 * (n as f64);
+/// This just computes the composition and does not iterate to an escape.
+pub fn netbrot_repeat(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
+    let mut z = z0.clone();
+    if n >= 1 {
+        let mut matz = z0.clone();
 
-    fac_sqr / sigma_min_sqr
+        for _ in 0..n {
+            z = matz.component_mul(&matz).add_scalar(c);
+            mat.mul_to(&z, &mut matz);
+        }
+    }
+
+    z
 }
 
-/// Translate pixel coordinates to physical point coordinates.
+/// Compute the Jacobian of the Netbrot quadratic map.
 ///
-/// *bounds*: width and height of the image.
-/// *upper_left*, *lower_left*: bounding box of the domain.
-pub fn pixel_to_point(
-    bounds: (usize, usize),
-    pixel: (usize, usize),
-    upper_left: Complex64,
-    lower_right: Complex64,
-) -> Complex64 {
-    let (width, height) = (
-        lower_right.re - upper_left.re,
-        upper_left.im - lower_right.im,
-    );
-    c64(
-        // Why subtraction here? pixel.1 increases as we go down,
-        upper_left.re + (pixel.0 as f64) * width / (bounds.0 as f64),
-        // but the imaginary component increases as we go up.
-        upper_left.im - (pixel.1 as f64) * height / (bounds.1 as f64),
-    )
+/// The Jacobian is given by
+///
+/// $$
+///     J_f(z) = 2 diag(A z) A
+/// $$
+///
+/// where $diag(x)$ just gives a matrix with *x* on the diagonal.
+pub fn netbrot_repeat_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
+    let mut matz = z.clone();
+    mat.mul_to(z, &mut matz);
+
+    let n = mat.nrows();
+    for i in 0..n {
+        for j in 0..n {
+            jac[(i, j)] = 2.0 * mat[(i, j)] * matz[i];
+        }
+    }
+}
+
+// Compute the eigenvalues of the Jacobian of the *n* times composition.
+//
+// By the chain rule, the Jacobian is given by
+//
+// $$
+//      J_{f^n}(z) = J_f(f^{n - 1}(z)) J_f(f^{n - 2}(z)) \cdots J_f(z)
+// $$
+//
+// We compute the Jacobian of the composition right-to-left by multiplying the
+// resulting matrices as we construct the *n* times composition $f^n(z)$.
+pub fn netbrot_repeat_eigenvalues(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
+    let mut z = z0.clone();
+    let mut matz = z0.clone();
+
+    let mut jac = mat.clone();
+    let mut jac_n = mat.clone();
+    let mut tmp = mat.clone();
+
+    // Compute J_f(z)
+    netbrot_repeat_prime(&mat, &z, &mut jac);
+
+    for _ in 1..n {
+        // Compute f^n(z)
+        z = matz.component_mul(&matz).add_scalar(c);
+        mat.mul_to(&z, &mut matz);
+
+        // Compute J_f(f^n(z))
+        netbrot_repeat_prime(&mat, &z, &mut jac_n);
+
+        // Left multiply into J_{f^n}
+        jac_n.mul_to(&jac, &mut tmp);
+        jac.copy_from(&tmp);
+    }
+
+    jac.eigenvalues().unwrap()
 }
 
 // }}}
@@ -134,88 +167,6 @@ pub fn netbrot_orbit(brot: &Netbrot) -> EscapeResult {
         iteration: None,
         z: z.clone(),
     }
-}
-
-/// Compute the *n* times composition of the Netbrot quadratic map.
-///
-/// This just computes the composition and does not iterate to an escape.
-pub fn netbrot_compose_n(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
-    let mut z = z0.clone();
-    let mut matz = z0.clone();
-
-    for _ in 0..n {
-        z = matz.component_mul(&matz).add_scalar(c);
-        mat.mul_to(&z, &mut matz);
-    }
-
-    z
-}
-
-/// Compute the Jacobian of the Netbrot quadratic map.
-///
-/// The Jacobian is given by
-///
-/// $$
-///     J_f(z) = 2 diag(A z) A
-/// $$
-///
-/// where $diag(x)$ just gives a matrix with *x* on the diagonal.
-pub fn netbrot_compose_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
-    let mut matz = z.clone();
-    mat.mul_to(z, &mut matz);
-
-    let n = mat.nrows();
-    for i in 0..n {
-        for j in 0..n {
-            jac[(i, j)] = 2.0 * mat[(i, j)] * matz[i];
-        }
-    }
-}
-
-// Compute the eigenvalues of the Jacobian of the *n* times composition.
-//
-// By the chain rule, the Jacobian is given by
-//
-// $$
-//      J_{f^n}(z) = J_f(f^{n - 1}(z)) J_f(f^{n - 2}(z)) \cdots J_f(z)
-// $$
-//
-// We compute the Jacobian of the composition right-to-left by multiplying the
-// resulting matrices as we construct the *n* times composition $f^n(z)$.
-pub fn netbrot_orbit_lambda_n(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
-    let mut z = z0.clone();
-    let mut matz = z0.clone();
-
-    let mut jac = mat.clone();
-    let mut jac_n = mat.clone();
-    let mut tmp = mat.clone();
-
-    // Compute J_f(z)
-    netbrot_compose_prime(&mat, &z, &mut jac);
-
-    for _ in 1..n {
-        // Compute f^n(z)
-        z = matz.component_mul(&matz).add_scalar(c);
-        mat.mul_to(&z, &mut matz);
-
-        // Compute J_f(f^n(z))
-        netbrot_compose_prime(&mat, &z, &mut jac_n);
-
-        // Left multiply into J_{f^n}
-        jac_n.mul_to(&jac, &mut tmp);
-        jac.copy_from(&tmp);
-    }
-
-    jac.eigenvalues().unwrap()
-}
-
-/// Returns true if the orbit has any eigenvalues in the unit circle.
-///
-/// We basically compute the eigenvalues of J_{f^n}(x) and check if the smallest
-/// one is smaller than 1, i.e. at least one one eigenvalue is in the unit circle.
-pub fn netbrot_orbit_stable(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> bool {
-    let eigs = netbrot_orbit_lambda_n(mat, z0, c, n);
-    eigs.camin() < 1.0
 }
 
 // }}}
@@ -268,114 +219,5 @@ pub fn netbrot_orbit_period(brot: &Netbrot) -> PeriodResult {
         } => None,
     }
 }
-
-// }}}
-
-// {{{ rendering
-
-// {{{ render orbits
-
-pub fn render_orbit(
-    pixels: &mut [u8],
-    brot: &Netbrot,
-    bounds: (usize, usize),
-    upper_left: Complex64,
-    lower_right: Complex64,
-) {
-    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
-    let maxit = brot.maxit;
-    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
-
-    for row in 0..bounds.1 {
-        for column in 0..bounds.0 {
-            local_brot.c = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit(&local_brot) {
-                EscapeResult {
-                    iteration: None,
-                    z: _,
-                } => Rgb([0, 0, 0]),
-                EscapeResult {
-                    iteration: Some(n),
-                    z,
-                } => get_smooth_orbit_color(n, z.norm(), maxit),
-            };
-
-            let index = row * bounds.0 + 3 * column;
-            pixels[index] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
-        }
-    }
-}
-
-// }}}
-
-// {{{ render periods
-
-pub fn render_period(
-    pixels: &mut [u8],
-    brot: &Netbrot,
-    bounds: (usize, usize),
-    upper_left: Complex64,
-    lower_right: Complex64,
-) {
-    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
-    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
-
-    for row in 0..bounds.1 {
-        for column in 0..bounds.0 {
-            local_brot.c = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            let color = match netbrot_orbit_period(&local_brot) {
-                None => Rgb([255, 255, 255]),
-                Some(period) => get_period_color(period, MAX_PERIODS, 3),
-            };
-
-            let index = row * bounds.0 + 3 * column;
-            pixels[index] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
-        }
-    }
-}
-
-// }}}
-
-// {{{ render periods
-
-pub fn render_fixed_points(
-    pixels: &mut [u8],
-    brot: &Netbrot,
-    bounds: (usize, usize),
-    upper_left: Complex64,
-    lower_right: Complex64,
-) {
-    assert!(pixels.len() == 3 * bounds.0 * bounds.1);
-    let maxit = brot.maxit;
-    let nrows = brot.mat.nrows();
-    let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
-
-    for row in 0..bounds.1 {
-        for column in 0..bounds.0 {
-            let z0 = pixel_to_point(bounds, (column, row), upper_left, lower_right);
-            local_brot.z0 = DVector::from_vec(vec![z0; nrows]);
-            let color = match netbrot_orbit(&local_brot) {
-                EscapeResult {
-                    iteration: None,
-                    z: _,
-                } => Rgb([0, 0, 0]),
-                EscapeResult {
-                    iteration: Some(n),
-                    z,
-                } => get_smooth_orbit_color(n, z.norm(), maxit),
-            };
-            let index = row * bounds.0 + 3 * column;
-            pixels[index] = color[0];
-            pixels[index + 1] = color[1];
-            pixels[index + 2] = color[2];
-        }
-    }
-}
-
-// }}}
 
 // }}}
