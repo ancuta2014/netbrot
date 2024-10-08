@@ -118,7 +118,10 @@ fn main() {
     let brot = Netbrot::new(&exhibit.mat, args.maxit, exhibit.escape_radius);
     println!("Escape radius {}", brot.escape_radius_squared.sqrt());
 
-    fixedpoints::find_fixed_points_by_newton(&brot, 512, 1, 1.0e-8);
+    let result = fixedpoints::find_fixed_points_by_newton(&brot, 512, 2, 1.0e-6);
+    for fp in result {
+        println!("Fixed points: {}", fp);
+    }
 
     // Scope of slicing up `pixels` into horizontal bands.
     println!("Executing...");
