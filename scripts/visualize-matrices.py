@@ -14,6 +14,21 @@ log = logging.getLogger(pathlib.Path(__file__).stem)
 log.setLevel(logging.ERROR)
 log.addHandler(rich.logging.RichHandler())
 
+SCRIPT_PATH = pathlib.Path(__file__)
+SCRIPT_LONG_HELP = f"""\
+This script plots out some matrices contained in an `.npz` file. It plots
+* a description of the matrix structure as a grayscale image in log scale. This
+  is mainly useful for sparse matrices with small entries.
+* its eigenvalues. This can be used to see which matrices are close to singular.
+
+Example:
+
+    > {SCRIPT_PATH.name} --variable-name matrices data.npz
+"""
+
+
+# {{{ plotting settings
+
 
 def set_recommended_matplotlib() -> None:
     try:
@@ -61,6 +76,12 @@ def set_recommended_matplotlib() -> None:
         mp.rc(group, **params)
 
 
+# }}}
+
+
+# {{{ main
+
+
 def main(
     filename: pathlib.Path,
     *,
@@ -100,10 +121,22 @@ def main(
     return 0
 
 
+# }}}
+
+
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser()
+    class HelpFormatter(
+        argparse.ArgumentDefaultsHelpFormatter,
+        argparse.RawDescriptionHelpFormatter,
+    ):
+        pass
+
+    parser = argparse.ArgumentParser(
+        formatter_class=HelpFormatter,
+        description=SCRIPT_LONG_HELP,
+    )
     parser.add_argument("filename", type=pathlib.Path)
     parser.add_argument(
         "-n",

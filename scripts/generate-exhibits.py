@@ -15,6 +15,38 @@ log = logging.getLogger(pathlib.Path(__file__).stem)
 log.setLevel(logging.ERROR)
 log.addHandler(rich.logging.RichHandler())
 
+SCRIPT_PATH = pathlib.Path(__file__)
+SCRIPT_LONG_HELP = f"""\
+This script generates a collection of JSON files that can be used with the main
+`netbrot` executable to define the fractal that will be rendered. The JSON
+files have a very specific format (so that they can be loaded by `serde`), so
+be careful when playing with them manually!
+
+The script supports multiple modes of operation.
+* `convert`: Takes a MATLAB `.mat` file containing some matrices and converts.
+  If the given variable is a 3-dimensional tensor, the first dimension is
+  considered an index for multiple matrices. Like that, a matrix of size
+  `(7, 32, 32)` will generate 7 different JSON files.
+* `random`: Generates some random NxN matrices of a desired type. Currently
+  this supports: `fixed` for some matrices we like, `feedforward` for lower
+  triangular matrices, and `equalrow` for matrices with equal row sums.
+
+The bounding box for rendering can be specified using the `--xlim` and `--ylim`
+parameters. The resulting JSON files has the following fields
+```JSON
+{{
+    "mat": [[[mij.real, mij.imag], ...], nx, ny],
+    "escape_radius": 1.0,
+    "upper_left": [ux, uy],
+    "lower_right": [lx, ly],
+}}
+```
+
+Example:
+
+    > {SCRIPT_PATH.name} convert --variable-name matrices data.mat
+    > {SCRIPT_PATH.name} random --type feedforward --size 10 --count 32
+"""
 
 # {{{ utils
 
@@ -339,7 +371,16 @@ def generate_random_matrix(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser()
+    class HelpFormatter(
+        argparse.ArgumentDefaultsHelpFormatter,
+        argparse.RawDescriptionHelpFormatter,
+    ):
+        pass
+
+    parser = argparse.ArgumentParser(
+        formatter_class=HelpFormatter,
+        description=SCRIPT_LONG_HELP,
+    )
     parser.add_argument(
         "-o",
         "--outfile",
