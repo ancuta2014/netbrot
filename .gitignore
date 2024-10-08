@@ -6,3 +6,4 @@ data/*.json
 
 /target
 *.png
+*.mat
