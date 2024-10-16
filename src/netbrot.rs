@@ -57,6 +57,7 @@ type PeriodResult = Option<usize>;
 /// Compute the *n* times composition of the Netbrot quadratic map.
 ///
 /// This just computes the composition and does not iterate to an escape.
+#[allow(dead_code)]
 pub fn netbrot_repeat(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
     let mut z = z0.clone();
     if n >= 1 {
@@ -80,6 +81,7 @@ pub fn netbrot_repeat(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector
 /// $$
 ///
 /// where $diag(x)$ just gives a matrix with *x* on the diagonal.
+#[allow(dead_code)]
 pub fn netbrot_repeat_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
     let mut matz = z.clone();
     mat.mul_to(z, &mut matz);
@@ -102,6 +104,7 @@ pub fn netbrot_repeat_prime(mat: &Matrix, z: &Vector, jac: &mut Matrix) {
 //
 // We compute the Jacobian of the composition right-to-left by multiplying the
 // resulting matrices as we construct the *n* times composition $f^n(z)$.
+#[allow(dead_code)]
 pub fn netbrot_repeat_eigenvalues(mat: Matrix, z0: Vector, c: Complex64, n: usize) -> Vector {
     let mut z = z0.clone();
     let mut matz = z0.clone();

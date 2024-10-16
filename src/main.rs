@@ -20,38 +20,33 @@ use std::io::BufReader;
 use std::path::Path;
 use std::time::Instant;
 
+use colorschemes::ColorType;
 use netbrot::Netbrot;
-use render::{pixel_to_point, render_orbit, render_period};
+use render::{pixel_to_point, render_orbit, render_period, RenderType};
 
 use nalgebra::DMatrix;
 use num::complex::Complex64;
 use serde::{Deserialize, Serialize};
 
-use clap::{Parser, ValueEnum, ValueHint};
+use clap::{Parser, ValueHint};
 use image::RgbImage;
 use rayon::prelude::*;
 
 // {{{ Command-line parser
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
-enum ColorType {
-    /// Plot orbits.
-    Orbit,
-    /// Plot periodicity for orbits that do not escape.
-    Period,
-    // Fixed points
-    // Fixed,
-}
-
 #[derive(Parser, Debug)]
 #[clap(version, about)]
 struct Cli {
     /// If given, plot periods instead of orbits
-    #[arg(short, long, value_enum, default_value = "orbit")]
+    #[arg(long, value_enum, default_value = "orbit")]
+    render: RenderType,
+
+    /// If given, plot using this color
+    #[arg(long, value_enum, default_value = "default-palette")]
     color: ColorType,
 
     /// Resolution of the resulting image
-    #[arg(short, long, default_value_t = 8000)]
+    #[arg(short, long, default_value_t = 4096)]
     resolution: u32,
 
     /// Maximum number of iterations before a point is considered in the set
@@ -95,7 +90,8 @@ fn main() {
     let args = Cli::parse();
 
     let color_type = args.color;
-    println!("Coloring: {:?}", color_type);
+    let render_type = args.render;
+    println!("Rendering: {:?}", render_type);
 
     let exhibit = read_exhibit(args.exhibit.clone()).unwrap();
     let upper_left = exhibit.upper_left;
@@ -129,13 +125,23 @@ fn main() {
             let band_lower_right =
                 pixel_to_point(bounds, (bounds.0, top + 1), upper_left, lower_right);
 
-            match color_type {
-                ColorType::Orbit => {
-                    render_orbit(band, &brot, band_bounds, band_upper_left, band_lower_right)
-                }
-                ColorType::Period => {
-                    render_period(band, &brot, band_bounds, band_upper_left, band_lower_right)
-                }
+            match render_type {
+                RenderType::Orbit => render_orbit(
+                    band,
+                    &brot,
+                    band_bounds,
+                    band_upper_left,
+                    band_lower_right,
+                    color_type,
+                ),
+                RenderType::Period => render_period(
+                    band,
+                    &brot,
+                    band_bounds,
+                    band_upper_left,
+                    band_lower_right,
+                    color_type,
+                ),
             }
         });
     }

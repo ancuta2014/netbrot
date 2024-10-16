@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
+use clap::ValueEnum;
 use colors_transform::{Color, Hsl};
 use image::Rgb;
 
@@ -111,6 +112,26 @@ const COLOR_PALETTE_V3: [Rgb<u8>; 32] = [
     Rgb([0, 0, 0]),
 ];
 
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum ColorType {
+    /// Default palette.
+    DefaultPalette,
+
+    /// Color palette for period plotting.
+    PeriodStack,
+    /// Color palette for period plotting.
+    PeriodEndesga,
+    /// Color palette for period plotting.
+    PeriodMatlab,
+
+    /// Color palette for orbit plotting.
+    OrbitBlue,
+    /// Color palette for orbit plotting.
+    OrbitFire,
+    /// Black and white palette for orbit plotting.
+    OrbitBinary,
+}
+
 /// Determine the color for a normalized iteration count *c*.
 ///
 /// This function takes a value *c* in [0, 1].
@@ -130,23 +151,26 @@ pub fn get_orbit_color(c: f64) -> Rgb<u8> {
 ///
 /// This function tries to be a bit smarter with the coloring and uses the
 /// renormalization mentioned in [here](https://linas.org/art-gallery/escape/escape.html).
-pub fn get_smooth_orbit_color(c: usize, z: f64, limit: usize) -> Rgb<u8> {
-    get_orbit_color(((c as f64) + 1.0 - z.ln().log2()) / (limit as f64))
+pub fn get_smooth_orbit_color(color: ColorType, c: usize, z: f64, limit: usize) -> Rgb<u8> {
+    let cz = ((c as f64) + 1.0 - z.ln().log2()) / (limit as f64);
+
+    match color {
+        ColorType::OrbitBinary => Rgb([255, 255, 255]),
+        ColorType::OrbitFire => get_orbit_color(3.0 * cz * cz - 3.0 * cz + 1.0),
+        ColorType::DefaultPalette | ColorType::OrbitBlue => get_orbit_color(cz),
+        _ => panic!("Unsupported color type: {:?}", color),
+    }
 }
 
 /// Determine the color for a given period.
 ///
 /// The period color is determined from a fixed colormap. Currently there are
 /// three colormaps implemented with *version* taking values in [1, 2, 3].
-pub fn get_period_color(p: usize, limit: usize, version: u8) -> Rgb<u8> {
-    if 1 <= p && p < limit - 1 {
-        match version {
-            1 => COLOR_PALETTE_V1[p - 1],
-            2 => COLOR_PALETTE_V2[p - 1],
-            3 => COLOR_PALETTE_V3[p - 1],
-            _ => panic!("Invalid color palette version"),
-        }
-    } else {
-        Rgb([0, 0, 0])
+pub fn get_period_color(color: ColorType, p: usize) -> Rgb<u8> {
+    match color {
+        ColorType::PeriodStack => COLOR_PALETTE_V1[p - 1],
+        ColorType::PeriodEndesga => COLOR_PALETTE_V2[p - 1],
+        ColorType::DefaultPalette | ColorType::PeriodMatlab => COLOR_PALETTE_V3[p - 1],
+        _ => panic!("Unsupported color type: {:?}", color),
     }
 }

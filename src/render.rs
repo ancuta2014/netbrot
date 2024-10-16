@@ -1,14 +1,25 @@
 // SPDX-FileCopyrightText: 2024 Alexandru Fikl <alexfikl@gmail.com>
 // SPDX-License-Identifier: MIT
 
+use clap::ValueEnum;
 use image::Rgb;
 use num::complex::{c64, Complex64};
 
-use crate::colorschemes::{get_period_color, get_smooth_orbit_color};
+use crate::colorschemes::{get_period_color, get_smooth_orbit_color, ColorType};
 use crate::netbrot::{netbrot_orbit, netbrot_orbit_period, EscapeResult, Netbrot};
 
 pub const MAX_PERIODS: usize = 20;
 pub const PERIOD_WINDOW: usize = 2 * MAX_PERIODS;
+
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+pub enum RenderType {
+    /// Plot orbits.
+    Orbit,
+    /// Plot periodicity for orbits that do not escape.
+    Period,
+    // Fixed points
+    // Fixed,
+}
 
 /// Translate pixel coordinates to physical point coordinates.
 ///
@@ -40,6 +51,7 @@ pub fn render_orbit(
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
+    color: ColorType,
 ) {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
     let maxit = brot.maxit;
@@ -56,7 +68,7 @@ pub fn render_orbit(
                 EscapeResult {
                     iteration: Some(n),
                     z,
-                } => get_smooth_orbit_color(n, z.norm(), maxit),
+                } => get_smooth_orbit_color(color, n, z.norm(), maxit),
             };
 
             let index = row * bounds.0 + 3 * column;
@@ -77,6 +89,7 @@ pub fn render_period(
     bounds: (usize, usize),
     upper_left: Complex64,
     lower_right: Complex64,
+    color: ColorType,
 ) {
     assert!(pixels.len() == 3 * bounds.0 * bounds.1);
     let mut local_brot = Netbrot::new(&brot.mat, brot.maxit, brot.escape_radius_squared.sqrt());
@@ -86,7 +99,7 @@ pub fn render_period(
             local_brot.c = pixel_to_point(bounds, (column, row), upper_left, lower_right);
             let color = match netbrot_orbit_period(&local_brot) {
                 None => Rgb([255, 255, 255]),
-                Some(period) => get_period_color(period, MAX_PERIODS, 3),
+                Some(period) => get_period_color(color, period % MAX_PERIODS),
             };
 
             let index = row * bounds.0 + 3 * column;
