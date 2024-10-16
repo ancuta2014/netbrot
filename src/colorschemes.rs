@@ -117,18 +117,18 @@ pub enum ColorType {
     /// Default palette.
     DefaultPalette,
 
-    /// Color palette for period plotting.
+    /// Color palette for period rendering.
     PeriodStack,
-    /// Color palette for period plotting.
+    /// Color palette for period rendering.
     PeriodEndesga,
-    /// Color palette for period plotting.
+    /// Color palette for period rendering.
     PeriodMatlab,
 
-    /// Color palette for orbit plotting.
+    /// Color palette for orbit rendering (blue-green hues).
     OrbitBlue,
-    /// Color palette for orbit plotting.
+    /// Color palette for orbit rendering (red-purple hues).
     OrbitFire,
-    /// Black and white palette for orbit plotting.
+    /// Black and white palette for orbit rendering.
     OrbitBinary,
 }
 

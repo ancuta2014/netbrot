@@ -37,19 +37,22 @@ use rayon::prelude::*;
 #[derive(Parser, Debug)]
 #[clap(version, about)]
 struct Cli {
-    /// If given, plot periods instead of orbits
+    /// The type of render to perform (this mainly has an effect of the colors
+    /// and the meaning of the colors)
     #[arg(long, value_enum, default_value = "orbit")]
     render: RenderType,
 
-    /// If given, plot using this color
+    /// The color palette to use when rendering
     #[arg(long, value_enum, default_value = "default-palette")]
     color: ColorType,
 
-    /// Resolution of the resulting image
+    /// Resolution of the resulting image (this will be scaled to have the same
+    /// ration as the given bounding box)
     #[arg(short, long, default_value_t = 4096)]
     resolution: u32,
 
     /// Maximum number of iterations before a point is considered in the set
+    /// (this will also have an effect on the color intensity)
     #[arg(short, long, default_value_t = 256)]
     maxit: usize,
 
